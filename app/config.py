@@ -14,6 +14,7 @@ class Settings(BaseSettings):
 
     # AI model
     anthropic_api_key: str = ""
+    ai_model: str = "claude-opus-5-5"
 
     # Supabase database
     supabase_url: str = ""
