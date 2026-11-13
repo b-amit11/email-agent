@@ -66,9 +66,9 @@ def get_agent() -> Agent:
     return Agent(model, instructions=build_instructions())
 
 
-def write_reply(email: dict) -> str:
-    """Ask the agent to write a reply to one email. Returns the reply text."""
-    prompt = (
+def build_prompt(email: dict) -> str:
+    """Turn one email into the message we hand to the agent."""
+    return (
         "Write a reply to this customer email.\n\n"
         "<email>\n"
         f"From: {email.get('from_name') or ''} <{email.get('from_address') or ''}>\n"
@@ -76,5 +76,9 @@ def write_reply(email: dict) -> str:
         f"{email.get('body') or ''}\n"
         "</email>"
     )
-    result = get_agent().run_sync(prompt)
+
+
+def write_reply(email: dict) -> str:
+    """Ask the agent to write a reply to one email. Returns the reply text."""
+    result = get_agent().run_sync(build_prompt(email))
     return result.output.strip()

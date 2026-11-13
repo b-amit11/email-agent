@@ -1,0 +1,12 @@
+{
+  "metrics": [
+    {"id": "pass", "label": "Pass", "kind": "binary"},
+    {"id": "must_met", "label": "Musts met", "kind": "float", "scale": 1},
+    {"id": "no_violations", "label": "No violations", "kind": "binary"},
+    {"id": "format_ok", "label": "Format", "kind": "binary"}
+  ],
+  "perf_fields": [
+    {"id": "latency_s", "label": "Time", "unit": "s"},
+    {"id": "reply_words", "label": "Words"}
+  ]
+}
