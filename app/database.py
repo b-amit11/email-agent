@@ -74,6 +74,24 @@ def set_email_status(email_id: str, status: str) -> None:
     get_client().table("emails").update({"status": status}).eq("id", email_id).execute()
 
 
+def claim_email_for_drafting(email_id: str) -> dict | None:
+    """Flip a 'new' email to 'drafted' so that only one worker writes its reply.
+
+    Returns the email if we got the claim, or None if someone else already
+    took it. Call this BEFORE asking the AI. If drafting then fails, set the
+    status back to 'new' so it is tried again.
+    """
+    result = (
+        get_client()
+        .table("emails")
+        .update({"status": "drafted"})
+        .eq("id", email_id)
+        .eq("status", "new")
+        .execute()
+    )
+    return result.data[0] if result.data else None
+
+
 # ---------- drafts ----------
 
 

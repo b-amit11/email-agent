@@ -3,9 +3,13 @@
 Run it by hand with:  python -m app.drafting
 """
 
+import logging
+
 from app import database
 from app.agent import write_reply
 from app.config import get_settings
+
+log = logging.getLogger("uvicorn.error")
 
 
 def draft_new_emails() -> list[dict]:
@@ -16,8 +20,17 @@ def draft_new_emails() -> list[dict]:
     model_name = get_settings().ai_model
     drafts = []
     for email in database.get_emails("new"):
-        reply = write_reply(email)
-        drafts.append(database.save_draft(email["id"], reply, model=model_name))
+        # Claim the email first. If another worker (a second server, or a
+        # command run by hand) already took it, skip it: one email, one draft.
+        if database.claim_email_for_drafting(email["id"]) is None:
+            continue
+        try:
+            reply = write_reply(email)
+            drafts.append(database.save_draft(email["id"], reply, model=model_name))
+        except Exception:
+            # Put it back so the next round tries again, and carry on.
+            database.set_email_status(email["id"], "new")
+            log.exception("Could not draft a reply for email %s.", email["id"])
     return drafts
 
 

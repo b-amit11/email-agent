@@ -3,14 +3,54 @@
 Start it with:  python -m uvicorn app.main:app --reload
 """
 
+import asyncio
+import logging
+from contextlib import asynccontextmanager
 from uuid import UUID
 
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
-from app import database, gmail
+from app import database, gmail, pipeline
+from app.config import get_settings
 
-app =FastAPI(title="Email Agent", version="0.1.0")
+log = logging.getLogger("uvicorn.error")
+
+
+async def _check_mail_forever(interval: int) -> None:
+    """Every `interval` seconds: fetch new emails and draft replies."""
+    while True:
+        try:
+            result = await asyncio.to_thread(pipeline.run_once)
+            if result.get("saved") or result.get("ignored") or result.get("drafted"):
+                log.info(
+                    "Mail check: %s new, %s ignored, %s drafted.",
+                    result.get("saved", 0),
+                    result.get("ignored", 0),
+                    result.get("drafted", 0),
+                )
+        except Exception:
+            # One bad round must not stop the checking; try again next time.
+            log.exception("Mail check failed; will try again.")
+        await asyncio.sleep(interval)
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Start the background mail check when the server starts; stop it at shutdown."""
+    interval = get_settings().poll_interval_seconds
+    task = None
+    if interval > 0:
+        log.info("Checking Gmail every %s seconds.", interval)
+        task = asyncio.create_task(_check_mail_forever(interval))
+    else:
+        log.info("Automatic Gmail checking is off.")
+    yield
+    if task:
+        task.cancel()
+
+
+app = FastAPI(title="Email Agent", version="0.1.0", lifespan=lifespan)
 
 
 class ApproveRequest(BaseModel):
@@ -37,6 +77,15 @@ def _get_pending_draft(draft_id: UUID) -> dict:
 def health() -> dict:
     """A simple check that the server is running."""
     return {"status": "ok"}
+
+
+@app.post("/check-mail")
+def check_mail_now() -> dict:
+    """Fetch new emails and draft replies right now, without waiting."""
+    try:
+        return pipeline.run_once()
+    except Exception as error:
+        raise HTTPException(status_code=502, detail=f"Mail check failed: {error}") from error
 
 
 @app.get("/drafts")

@@ -24,6 +24,9 @@ class Settings(BaseSettings):
     gmail_credentials_path: str = "credentials/credentials.json"
     gmail_token_path: str = "credentials/token.json"
 
+    # How often the backend checks Gmail by itself, in seconds. 0 turns it off.
+    poll_interval_seconds: int = 60
+
 
 @lru_cache
 def get_settings() -> Settings:

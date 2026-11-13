@@ -6,7 +6,6 @@ import re
 from datetime import datetime, timezone
 from email.message import EmailMessage
 from email.utils import parseaddr
-from functools import lru_cache
 from pathlib import Path
 
 from google.auth.transport.requests import Request
@@ -53,9 +52,12 @@ def get_credentials() -> Credentials:
     return creds
 
 
-@lru_cache
 def get_service():
-    """Return a Gmail service object, used for every Gmail request."""
+    """Return a Gmail service object, used for every Gmail request.
+
+    A fresh one is made each time, because one service object must not be
+    used by two tasks at once (the background check and a send, for example).
+    """
     return build("gmail", "v1", credentials=get_credentials(), cache_discovery=False)
 
 
