@@ -4,6 +4,7 @@ import base64
 import html
 import re
 from datetime import datetime, timezone
+from email.message import EmailMessage
 from email.utils import parseaddr
 from functools import lru_cache
 from pathlib import Path
@@ -138,3 +139,55 @@ def fetch_emails(query: str = "is:unread in:inbox", max_results: int = 10) -> li
         )
         emails.append(_parse_message(message))
     return emails
+
+
+# ---------- sending emails ----------
+
+
+def send_reply(
+    to_address: str,
+    subject: str | None,
+    body: str,
+    gmail_message_id: str,
+    gmail_thread_id: str | None,
+) -> dict:
+    """Send a reply to an email, in the same conversation thread.
+
+    Returns Gmail's record of the sent message.
+    """
+    service = get_service()
+
+    # Look up the original email's own id header, so mail apps can link
+    # our reply to it and show the two as one conversation.
+    original = (
+        service.users()
+        .messages()
+        .get(
+            userId="me",
+            id=gmail_message_id,
+            format="metadata",
+            metadataHeaders=["Message-ID", "References"],
+        )
+        .execute()
+    )
+    headers = {h["name"].lower(): h["value"] for h in original["payload"].get("headers", [])}
+    original_id = headers.get("message-id")
+
+    subject = (subject or "").strip()
+    if not subject.lower().startswith("re:"):
+        subject = f"Re: {subject}" if subject else "Re:"
+
+    message = EmailMessage()
+    message["To"] = to_address
+    message["Subject"] = subject
+    if original_id:
+        message["In-Reply-To"] = original_id
+        message["References"] = f"{headers.get('references', '')} {original_id}".strip()
+    message.set_content(body)
+
+    raw = base64.urlsafe_b64encode(message.as_bytes()).decode("ascii")
+    request_body = {"raw": raw}
+    if gmail_thread_id:
+        request_body["threadId"] = gmail_thread_id
+
+    return service.users().messages().send(userId="me", body=request_body).execute()

@@ -8,9 +8,9 @@ from uuid import UUID
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
-from app import database
+from app import database, gmail
 
-app = FastAPI(title="Email Agent", version="0.1.0")
+app =FastAPI(title="Email Agent", version="0.1.0")
 
 
 class ApproveRequest(BaseModel):
@@ -60,3 +60,40 @@ def reject_draft(draft_id: UUID) -> dict:
     """Reject a draft. It will never be sent."""
     _get_pending_draft(draft_id)
     return database.review_draft(str(draft_id), approved=False)
+
+
+@app.post("/drafts/{draft_id}/send")
+def send_draft(draft_id: UUID) -> dict:
+    """Send an approved draft to the customer, as a reply in the same thread.
+
+    Only approved drafts can be sent, and each one only once.
+    """
+    draft = database.get_draft(str(draft_id))
+    if draft is None:
+        raise HTTPException(status_code=404, detail="Draft not found.")
+
+    claimed = database.claim_draft_for_sending(str(draft_id))
+    if claimed is None:
+        raise HTTPException(
+            status_code=409,
+            detail=f"Only approved drafts can be sent (status: {draft['status']}).",
+        )
+
+    try:
+        email = database.get_email(claimed["email_id"])
+        gmail.send_reply(
+            to_address=email["from_address"],
+            subject=email["subject"],
+            body=claimed["final_body"],
+            gmail_message_id=email["gmail_message_id"],
+            gmail_thread_id=email["gmail_thread_id"],
+        )
+    except Exception as error:
+        database.release_draft_claim(str(draft_id))
+        raise HTTPException(
+            status_code=502,
+            detail=f"Sending failed, the draft is still approved: {error}",
+        ) from error
+
+    database.set_email_status(claimed["email_id"], "sent")
+    return claimed

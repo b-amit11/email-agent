@@ -128,15 +128,36 @@ def review_draft(draft_id: str, approved: bool, final_body: str | None = None) -
     return result.data[0]
 
 
-def mark_draft_sent(draft_id: str) -> dict:
-    """Mark a draft as sent, and its email too."""
+def claim_draft_for_sending(draft_id: str) -> dict | None:
+    """Flip an approved draft to 'sent' so that it can only ever be sent once.
+
+    Returns the draft if we got the claim, or None if it was not in the
+    'approved' state (not reviewed yet, rejected, or already sent).
+    Call this BEFORE sending. If sending then fails, call release_draft_claim.
+    """
     result = (
         get_client()
         .table("drafts")
         .update({"status": "sent", "sent_at": _now()})
         .eq("id", draft_id)
+        .eq("status", "approved")
         .execute()
     )
-    draft = result.data[0]
-    set_email_status(draft["email_id"], "sent")
-    return draft
+    return result.data[0] if result.data else None
+
+
+def release_draft_claim(draft_id: str) -> None:
+    """Sending failed: put the draft back to 'approved' so it can be retried."""
+    (
+        get_client()
+        .table("drafts")
+        .update({"status": "approved", "sent_at": None})
+        .eq("id", draft_id)
+        .execute()
+    )
+
+
+def get_email(email_id: str) -> dict | None:
+    """Get one email by its id, or None if there is no such email."""
+    result = get_client().table("emails").select("*").eq("id", email_id).execute()
+    return result.data[0] if result.data else None
