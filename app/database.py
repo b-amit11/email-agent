@@ -102,6 +102,12 @@ def get_pending_drafts() -> list[dict]:
     return result.data
 
 
+def get_draft(draft_id: str) -> dict | None:
+    """Get one draft by its id, or None if there is no such draft."""
+    result = get_client().table("drafts").select("*").eq("id", draft_id).execute()
+    return result.data[0] if result.data else None
+
+
 def review_draft(draft_id: str, approved: bool, final_body: str | None = None) -> dict:
     """Record the reviewer's decision.
 
