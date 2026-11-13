@@ -40,9 +40,10 @@ def health() -> dict:
 
 
 @app.get("/drafts")
-def list_pending_drafts() -> list[dict]:
-    """All drafts waiting for review, each with its original email."""
-    return database.get_pending_drafts()
+def list_open_drafts() -> list[dict]:
+    """Drafts that still need a person: waiting for review, or approved but
+    not sent yet. Each comes with its original email."""
+    return database.get_open_drafts()
 
 
 @app.post("/drafts/{draft_id}/approve")

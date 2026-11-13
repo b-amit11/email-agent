@@ -1,32 +1,38 @@
-:root {
-  --bg: #f5f6f8;
-  --surface: #ffffff;
-  --border: #dfe3e8;
-  --text: #1c2430;
-  --muted: #5b6675;
-  --accent: #2456c7;
-  --accent-text: #ffffff;
-  --error-bg: #fdecea;
-  --error-text: #8f1d14;
+/* The look: a mail desk. Paper, ink, a typed slip for what came in,
+   a letter sheet for what goes out, and a rubber stamp for its status. */
 
-  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-  font-size: 16px;
-  line-height: 1.5;
-  color: var(--text);
-  background: var(--bg);
+:root {
+  --desk: #e9e3d6;
+  --paper: #fbf8f1;
+  --slip: #f1ecdf;
+  --ink: #211e1a;
+  --faded: #6f675b;
+  --rule: #cdc4b2;
+  --green: #24543f;
+  --red: #a3271c;
+  --on-ink: #fbf8f1;
+
+  --serif: 'Iowan Old Style', 'Palatino Linotype', Palatino, 'Book Antiqua', Georgia, serif;
+  --mono: 'Cascadia Mono', Consolas, 'SF Mono', Menlo, 'Courier New', monospace;
+
+  font-family: var(--serif);
+  font-size: 17px;
+  line-height: 1.55;
+  color: var(--ink);
+  background: var(--desk);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #14181f;
-    --surface: #1d232d;
-    --border: #2f3846;
-    --text: #e6eaf0;
-    --muted: #9aa6b6;
-    --accent: #6b9bff;
-    --accent-text: #0e1420;
-    --error-bg: #3a1c1a;
-    --error-text: #ffb4ab;
+    --desk: #15130f;
+    --paper: #24211b;
+    --slip: #1c1a15;
+    --ink: #ebe5d8;
+    --faded: #a1988a;
+    --rule: #3d382e;
+    --green: #7fc4a3;
+    --red: #f08a7c;
+    --on-ink: #15130f;
   }
 }
 
@@ -36,114 +42,331 @@
 
 body {
   margin: 0;
-  background: var(--bg);
+  background: var(--desk);
 }
 
-.page {
-  max-width: 1100px;
+.desk {
+  max-width: 1120px;
   margin: 0 auto;
-  padding: 32px 16px 64px;
+  padding: 40px 16px 80px;
 }
 
-.header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 24px;
+/* ---------- masthead ---------- */
+
+.masthead {
+  margin-bottom: 36px;
+  padding-bottom: 14px;
+  border-bottom: 3px double var(--ink);
+}
+
+.dateline {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--faded);
 }
 
 h1 {
-  margin: 0;
-  font-size: 1.6rem;
+  margin: 2px 0 10px;
+  font-size: clamp(2.2rem, 6vw, 3.4rem);
+  font-weight: 400;
+  font-style: italic;
+  letter-spacing: -0.01em;
+  line-height: 1.1;
 }
 
-.subtitle {
-  margin: 4px 0 0;
-  color: var(--muted);
+.tally {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-family: var(--mono);
+  font-size: 0.82rem;
 }
+
+/* ---------- buttons ---------- */
 
 button {
-  font: inherit;
-  padding: 8px 16px;
-  border: 1px solid var(--accent);
-  border-radius: 8px;
-  background: var(--accent);
-  color: var(--accent-text);
+  font-family: var(--mono);
+  font-size: 0.74rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 10px 16px;
+  border: 1.5px solid var(--ink);
+  border-radius: 0;
+  background: transparent;
+  color: var(--ink);
   cursor: pointer;
 }
 
+button:hover:not(:disabled) {
+  background: var(--ink);
+  color: var(--on-ink);
+}
+
+button:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid var(--green);
+  outline-offset: 2px;
+}
+
 button:disabled {
-  opacity: 0.6;
+  opacity: 0.5;
   cursor: default;
 }
 
-.notice {
-  padding: 16px;
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  background: var(--surface);
-  color: var(--muted);
+button.primary {
+  background: var(--green);
+  border-color: var(--green);
+  color: var(--on-ink);
 }
 
-.notice.error {
+button.primary:hover:not(:disabled) {
+  background: var(--ink);
+  border-color: var(--ink);
+}
+
+button.danger {
+  background: var(--red);
+  border-color: var(--red);
+  color: var(--on-ink);
+}
+
+button.quiet {
   border-color: transparent;
-  background: var(--error-bg);
-  color: var(--error-text);
+  text-decoration: underline;
+  text-underline-offset: 4px;
+  padding-left: 6px;
+  padding-right: 6px;
 }
 
-.card {
+/* ---------- a letter ---------- */
+
+.letter {
+  position: relative;
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  margin-bottom: 20px;
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  background: var(--surface);
-  overflow: hidden;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+  margin-bottom: 44px;
 }
 
-.pane {
-  min-width: 0;
-  padding: 20px;
+.letter-number {
+  position: absolute;
+  top: -11px;
+  left: 14px;
+  z-index: 1;
+  padding: 1px 8px;
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.12em;
+  background: var(--ink);
+  color: var(--on-ink);
 }
 
-.pane + .pane {
-  border-left: 1px solid var(--border);
-}
-
-.pane h3 {
-  margin: 0 0 10px;
-  font-size: 0.8rem;
-  letter-spacing: 0.06em;
+.label {
+  margin: 0 0 14px;
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: var(--muted);
+  color: var(--faded);
 }
 
-.meta {
-  margin: 0 0 4px;
-  font-size: 0.92rem;
-  color: var(--muted);
+/* What came in: a typed slip. */
+
+.incoming {
+  padding: 28px 22px 24px;
+  background: var(--slip);
+  border: 1px solid var(--rule);
+  border-right: 2px dashed var(--rule);
+}
+
+.slip {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 2px 12px;
+  margin: 0 0 16px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--rule);
+  font-family: var(--mono);
+  font-size: 0.8rem;
+}
+
+.slip dt {
+  color: var(--faded);
+}
+
+.slip dd {
+  margin: 0;
   overflow-wrap: anywhere;
 }
 
-.meta strong {
-  color: var(--text);
+.address {
+  color: var(--faded);
 }
 
-.text {
-  margin: 14px 0 0;
-  font: inherit;
+.typed {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 0.86rem;
+  line-height: 1.65;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
 
-@media (max-width: 760px) {
-  .card {
-    grid-template-columns: 1fr;
+/* What goes out: a letter sheet. */
+
+.reply {
+  position: relative;
+  padding: 28px 30px 24px;
+  background: var(--paper);
+  border: 1px solid var(--rule);
+  border-left: none;
+}
+
+.sheet {
+  display: block;
+  width: 100%;
+  margin: 0;
+  font-family: var(--serif);
+  font-size: 1.05rem;
+  line-height: 1.6;
+  color: var(--ink);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.editor {
+  padding: 12px 14px;
+  border: 1.5px solid var(--ink);
+  border-radius: 0;
+  background: transparent;
+  resize: vertical;
+}
+
+.stamp {
+  position: absolute;
+  top: 16px;
+  right: 18px;
+  padding: 4px 10px;
+  border: 3px double var(--red);
+  font-family: var(--mono);
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--red);
+  transform: rotate(-4deg);
+  opacity: 0.85;
+}
+
+.stamp-approved {
+  border-color: var(--green);
+  color: var(--green);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-top: 24px;
+  padding-top: 18px;
+  border-top: 1px solid var(--rule);
+}
+
+.ask {
+  flex: 1 1 220px;
+  font-style: italic;
+  overflow-wrap: anywhere;
+}
+
+/* ---------- messages ---------- */
+
+.problem {
+  margin: 18px 0 0;
+  padding: 10px 14px;
+  border-left: 4px solid var(--red);
+  font-family: var(--mono);
+  font-size: 0.82rem;
+  color: var(--red);
+  overflow-wrap: anywhere;
+}
+
+.problem.wide {
+  margin: 0 0 28px;
+}
+
+.empty {
+  margin: 64px 0;
+  font-size: 1.3rem;
+  font-style: italic;
+  text-align: center;
+  color: var(--faded);
+}
+
+/* ---------- log ---------- */
+
+.log {
+  margin-top: 56px;
+  padding-top: 14px;
+  border-top: 3px double var(--ink);
+}
+
+.log h2 {
+  margin: 0 0 10px;
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  font-weight: 400;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--faded);
+}
+
+.log ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-family: var(--mono);
+  font-size: 0.82rem;
+}
+
+.log li {
+  display: grid;
+  grid-template-columns: 5.5em 13em minmax(0, 1fr);
+  gap: 12px;
+  padding: 7px 0;
+  border-bottom: 1px dotted var(--rule);
+}
+
+.log-time,
+.log-who {
+  color: var(--faded);
+  overflow-wrap: anywhere;
+}
+
+/* ---------- narrow screens ---------- */
+
+@media (max-width: 780px) {
+  .letter {
+    grid-template-columns: minmax(0, 1fr);
   }
 
-  .pane + .pane {
-    border-left: none;
-    border-top: 1px solid var(--border);
+  .incoming {
+    border-right: 1px solid var(--rule);
+    border-bottom: 2px dashed var(--rule);
+  }
+
+  .reply {
+    padding: 44px 20px 22px;
+    border-left: 1px solid var(--rule);
+    border-top: none;
+  }
+
+  .log li {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
   }
 }

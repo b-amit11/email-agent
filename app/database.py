@@ -102,6 +102,20 @@ def get_pending_drafts() -> list[dict]:
     return result.data
 
 
+def get_open_drafts() -> list[dict]:
+    """List drafts that still need a person: waiting for review, or approved
+    but not sent yet. Each comes with its original email attached."""
+    result = (
+        get_client()
+        .table("drafts")
+        .select("*, email:emails(*)")
+        .in_("status", ["pending", "approved"])
+        .order("created_at")
+        .execute()
+    )
+    return result.data
+
+
 def get_draft(draft_id: str) -> dict | None:
     """Get one draft by its id, or None if there is no such draft."""
     result = get_client().table("drafts").select("*").eq("id", draft_id).execute()
