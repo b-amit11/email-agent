@@ -1,0 +1,18 @@
+# Web backend
+fastapi
+uvicorn[standard]
+
+# AI agent
+pydantic-ai
+
+# Config / secrets loading
+pydantic-settings
+python-dotenv
+
+# Gmail API
+google-api-python-client
+google-auth-oauthlib
+google-auth-httplib2
+
+# Database
+supabase
