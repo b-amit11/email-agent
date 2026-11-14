@@ -6,7 +6,7 @@ Run it by hand with:  python -m app.drafting
 import logging
 
 from app import database
-from app.agent import write_reply
+from app.agent import write_draft
 from app.config import get_settings
 
 log = logging.getLogger("uvicorn.error")
@@ -25,8 +25,16 @@ def draft_new_emails() -> list[dict]:
         if database.claim_email_for_drafting(email["id"]) is None:
             continue
         try:
-            reply = write_reply(email)
-            drafts.append(database.save_draft(email["id"], reply, model=model_name))
+            draft = write_draft(email)
+            drafts.append(
+                database.save_draft(
+                    email["id"],
+                    draft.reply,
+                    model=model_name,
+                    needs_follow_up=draft.needs_follow_up,
+                    follow_up_note=draft.follow_up_note,
+                )
+            )
         except Exception:
             # Put it back so the next round tries again, and carry on.
             database.set_email_status(email["id"], "new")

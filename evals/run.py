@@ -22,7 +22,7 @@ import anthropic
 from pydantic import BaseModel
 from pydantic_ai.models.test import TestModel
 
-from app.agent import build_instructions, build_prompt, get_agent
+from app.agent import DraftReply, build_instructions, build_prompt, get_agent, tidy
 from app.config import get_settings
 
 EVAL_DIR = Path(__file__).resolve().parent
@@ -79,16 +79,24 @@ async def ask_agent(email: dict, dry_run: bool) -> dict:
     prompt = build_prompt(email)
     started = time.perf_counter()
     if dry_run:
-        fake = TestModel(custom_output_text=f"Hello,\n\nThank you for your email.\n\nBest regards,\n{SIGN_OFF}")
-        with agent.override(model=fake):
-            result = await agent.run(prompt)
+        fake = TestModel(custom_output_args={
+            "reply": f"Hello,\n\nThank you for your email.\n\nBest regards,\n{SIGN_OFF}",
+            "needs_follow_up": False,
+            "follow_up_note": None,
+        })
+        # The fake model cannot do the real model's structured-output mode,
+        # so ask it for the same fields in the plain way.
+        result = await agent.run(prompt, model=fake, output_type=DraftReply)
     else:
         result = await agent.run(prompt)
     latency = time.perf_counter() - started
     usage = result.usage
+    draft = tidy(result.output)
     return {
         "prompt": prompt,
-        "reply": (result.output or "").strip(),
+        "reply": draft.reply,
+        "needs_follow_up": draft.needs_follow_up,
+        "follow_up_note": draft.follow_up_note,
         "model": result.response.model_name,
         "stop_reason": result.response.finish_reason,
         "latency_s": round(latency, 2),
@@ -198,6 +206,8 @@ async def run_case(client, case: dict, rep: int, expected_model: str, dry_run: b
         "usage": answer["usage"],
         "latency_s": answer["latency_s"],
         "reply_words": len(answer["reply"].split()),
+        "needs_follow_up": answer["needs_follow_up"],
+        "follow_up_note": answer["follow_up_note"],
     }
     trace = [
         {"role": "system", "content": build_instructions()},

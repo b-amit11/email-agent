@@ -95,12 +95,26 @@ def claim_email_for_drafting(email_id: str) -> dict | None:
 # ---------- drafts ----------
 
 
-def save_draft(email_id: str, body: str, model: str | None = None) -> dict:
+def save_draft(
+    email_id: str,
+    body: str,
+    model: str | None = None,
+    needs_follow_up: bool = False,
+    follow_up_note: str | None = None,
+) -> dict:
     """Save an AI-written reply and mark its email as drafted."""
     result = (
         get_client()
         .table("drafts")
-        .insert({"email_id": email_id, "body": body, "model": model})
+        .insert(
+            {
+                "email_id": email_id,
+                "body": body,
+                "model": model,
+                "needs_follow_up": needs_follow_up,
+                "follow_up_note": follow_up_note,
+            }
+        )
         .execute()
     )
     set_email_status(email_id, "drafted")
