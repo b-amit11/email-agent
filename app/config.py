@@ -10,6 +10,8 @@ class Settings(BaseSettings):
         env_file=".env",
         env_file_encoding="utf-8",
         extra="ignore",
+        # Ignore stray spaces around a value, such as "KEY= value".
+        str_strip_whitespace=True,
     )
 
     # AI model

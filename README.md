@@ -85,6 +85,18 @@ Open http://localhost:5173 and log in with your dashboard password. Send an emai
 
 The backend also has a page listing everything it can do, at http://127.0.0.1:8000/docs.
 
+## Running it with Docker
+
+With Docker Desktop installed, the whole project starts with one command from the project root:
+
+```powershell
+docker compose up --build
+```
+
+Then open http://localhost:8080. Press Ctrl+C to stop.
+
+Do the Gmail sign-in from the Setup section first, so that `credentials/token.json` exists. The containers read your secrets from `.env` when they start; nothing secret is stored inside the images.
+
 ## Changing what the agent knows
 
 Edit or add `.md` files in `knowledge/`, then restart the backend. The fact sheets are read once at startup.
