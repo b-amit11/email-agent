@@ -8,10 +8,10 @@ import logging
 from contextlib import asynccontextmanager
 from uuid import UUID
 
-from fastapi import FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException, Request, Response
 from pydantic import BaseModel
 
-from app import database, gmail, pipeline
+from app import auth, database, gmail, pipeline
 from app.config import get_settings
 
 log = logging.getLogger("uvicorn.error")
@@ -79,7 +79,40 @@ def health() -> dict:
     return {"status": "ok"}
 
 
-@app.post("/check-mail")
+class LoginRequest(BaseModel):
+    password: str
+
+
+@app.post("/login")
+def login(body: LoginRequest, request: Request, response: Response) -> dict:
+    """Check the password and hand the browser a pass, kept in a cookie."""
+    client_address = request.client.host if request.client else "unknown"
+    auth.check_password(body.password, client_address)
+    response.set_cookie(
+        auth.SESSION_COOKIE,
+        auth.make_token(),
+        max_age=auth.SESSION_SECONDS,
+        httponly=True,  # page scripts cannot read it
+        samesite="strict",  # other websites cannot use it
+        secure=get_settings().cookie_secure,
+    )
+    return {"logged_in": True}
+
+
+@app.post("/logout")
+def logout(response: Response) -> dict:
+    """Throw the pass away."""
+    response.delete_cookie(auth.SESSION_COOKIE)
+    return {"logged_in": False}
+
+
+@app.get("/session")
+def session(request: Request) -> dict:
+    """Lets the dashboard ask: am I logged in?"""
+    return {"logged_in": auth.token_is_valid(request.cookies.get(auth.SESSION_COOKIE))}
+
+
+@app.post("/check-mail", dependencies=[Depends(auth.require_login)])
 def check_mail_now() -> dict:
     """Fetch new emails and draft replies right now, without waiting."""
     try:
@@ -88,14 +121,14 @@ def check_mail_now() -> dict:
         raise HTTPException(status_code=502, detail=f"Mail check failed: {error}") from error
 
 
-@app.get("/drafts")
+@app.get("/drafts", dependencies=[Depends(auth.require_login)])
 def list_open_drafts() -> list[dict]:
     """Drafts that still need a person: waiting for review, or approved but
     not sent yet. Each comes with its original email."""
     return database.get_open_drafts()
 
 
-@app.post("/drafts/{draft_id}/approve")
+@app.post("/drafts/{draft_id}/approve", dependencies=[Depends(auth.require_login)])
 def approve_draft(draft_id: UUID, request: ApproveRequest | None = None) -> dict:
     """Approve a draft, optionally with edited text. This does not send it."""
     _get_pending_draft(draft_id)
@@ -105,14 +138,14 @@ def approve_draft(draft_id: UUID, request: ApproveRequest | None = None) -> dict
     return database.review_draft(str(draft_id), approved=True, final_body=final_body)
 
 
-@app.post("/drafts/{draft_id}/reject")
+@app.post("/drafts/{draft_id}/reject", dependencies=[Depends(auth.require_login)])
 def reject_draft(draft_id: UUID) -> dict:
     """Reject a draft. It will never be sent."""
     _get_pending_draft(draft_id)
     return database.review_draft(str(draft_id), approved=False)
 
 
-@app.post("/drafts/{draft_id}/send")
+@app.post("/drafts/{draft_id}/send", dependencies=[Depends(auth.require_login)])
 def send_draft(draft_id: UUID) -> dict:
     """Send an approved draft to the customer, as a reply in the same thread.
 

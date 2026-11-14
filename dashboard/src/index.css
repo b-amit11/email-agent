@@ -313,6 +313,46 @@ button.quiet {
   overflow-wrap: anywhere;
 }
 
+/* ---------- the locked door ---------- */
+
+.door {
+  max-width: 520px;
+  margin: 56px auto;
+  padding: 28px 30px 30px;
+  background: var(--paper);
+  border: 1px solid var(--rule);
+  border-top: 6px solid var(--ink);
+}
+
+.door-note {
+  margin: 0 0 22px;
+  font-size: 1.2rem;
+  font-style: italic;
+}
+
+.door-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.door input {
+  flex: 1 1 200px;
+  min-width: 0;
+  padding: 9px 12px;
+  font-family: var(--mono);
+  font-size: 1rem;
+  color: var(--ink);
+  background: transparent;
+  border: 1.5px solid var(--ink);
+  border-radius: 0;
+}
+
+.door input:focus-visible {
+  outline: 2px solid var(--green);
+  outline-offset: 2px;
+}
+
 /* ---------- messages ---------- */
 
 .problem {

@@ -15,7 +15,9 @@ async function api(path, options = {}) {
     } catch {
       // The backend did not send a readable reason; keep the status code.
     }
-    throw new Error(reason)
+    const error = new Error(reason)
+    error.status = response.status
+    throw error
   }
   return response.json()
 }
@@ -193,9 +195,55 @@ function Letter({ draft, number, onDone, onChanged }) {
   )
 }
 
+// ---------- the locked door ----------
+
+function Login({ onDone }) {
+  const [password, setPassword] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [problem, setProblem] = useState(null)
+
+  async function submit(event) {
+    event.preventDefault()
+    setBusy(true)
+    setProblem(null)
+    try {
+      await api('/login', { method: 'POST', body: JSON.stringify({ password }) })
+      onDone()
+    } catch (error) {
+      setProblem(error.message)
+      setBusy(false)
+    }
+  }
+
+  return (
+    <form className="door" onSubmit={submit}>
+      <p className="door-note">The desk is locked. Enter the password to open it.</p>
+      <label className="label" htmlFor="password">
+        Password
+      </label>
+      <div className="door-row">
+        <input
+          id="password"
+          type="password"
+          autoComplete="current-password"
+          autoFocus
+          value={password}
+          onChange={(event) => setPassword(event.target.value)}
+          disabled={busy}
+        />
+        <button className="primary" type="submit" disabled={busy || !password}>
+          {busy ? 'Opening…' : 'Open the desk'}
+        </button>
+      </div>
+      {problem && <p className="problem">{problem}</p>}
+    </form>
+  )
+}
+
 // ---------- the whole desk ----------
 
 export default function App() {
+  const [session, setSession] = useState('checking') // 'checking' | 'out' | 'in'
   const [drafts, setDrafts] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -207,27 +255,61 @@ export default function App() {
       setDrafts(await api('/drafts'))
       setError(null)
     } catch (problem) {
-      setError(problem.message)
+      if (problem.status === 401) {
+        // The pass ran out or was never there: back to the locked door.
+        setSession('out')
+        setDrafts([])
+      } else {
+        setError(problem.message)
+      }
     } finally {
       setLoading(false)
     }
   }, [])
 
-  // Load once when the page opens.
+  // When the page opens: are we logged in? If so, load the drafts.
   useEffect(() => {
     let stillOpen = true
-    api('/drafts')
-      .then((data) => stillOpen && setDrafts(data))
-      .catch((problem) => stillOpen && setError(problem.message))
-      .finally(() => stillOpen && setLoading(false))
+    api('/session')
+      .then((data) => {
+        if (!stillOpen) return
+        if (data.logged_in) {
+          setSession('in')
+          loadDrafts()
+        } else {
+          setSession('out')
+          setLoading(false)
+        }
+      })
+      .catch((problem) => {
+        if (!stillOpen) return
+        setSession('in')
+        setError(problem.message)
+        setLoading(false)
+      })
     return () => {
       stillOpen = false
     }
-  }, [])
+  }, [loadDrafts])
 
   function refresh() {
     setLoading(true)
     loadDrafts()
+  }
+
+  function handleLoggedIn() {
+    setSession('in')
+    refresh()
+  }
+
+  async function lockDesk() {
+    try {
+      await api('/logout', { method: 'POST' })
+    } finally {
+      setSession('out')
+      setDrafts([])
+      setLog([])
+    }
   }
 
   // A letter was sent or rejected: take it off the desk and note it in the log.
@@ -260,19 +342,28 @@ export default function App() {
       <header className="masthead">
         <p className="dateline">{today}</p>
         <h1>The Reply Desk</h1>
-        <div className="tally">
-          <span>
-            {loading
-              ? 'Checking the tray…'
-              : drafts.length === 0
-                ? 'The tray is empty'
-                : `${drafts.length} ${drafts.length === 1 ? 'letter' : 'letters'} in the tray`}
-          </span>
-          <button className="quiet" onClick={refresh} disabled={loading}>
-            Check again
-          </button>
-        </div>
+        {session === 'in' && (
+          <div className="tally">
+            <span>
+              {loading
+                ? 'Checking the tray…'
+                : drafts.length === 0
+                  ? 'The tray is empty'
+                  : `${drafts.length} ${drafts.length === 1 ? 'letter' : 'letters'} in the tray`}
+            </span>
+            <span>
+              <button className="quiet" onClick={refresh} disabled={loading}>
+                Check again
+              </button>
+              <button className="quiet" onClick={lockDesk}>
+                Lock the desk
+              </button>
+            </span>
+          </div>
+        )}
       </header>
+
+      {session === 'out' && <Login onDone={handleLoggedIn} />}
 
       {error && (
         <p className="problem wide">
@@ -280,7 +371,7 @@ export default function App() {
         </p>
       )}
 
-      {!loading && !error && drafts.length === 0 && (
+      {session === 'in' && !loading && !error && drafts.length === 0 && (
         <p className="empty">Nothing is waiting for you. New drafts will appear here.</p>
       )}
 

@@ -19,6 +19,7 @@ An AI assistant for a customer support inbox. It reads incoming emails from Gmai
 | `app/knowledge.py` | Loads the fact sheets |
 | `app/ingest.py`, `app/drafting.py`, `app/pipeline.py` | The fetch and draft steps |
 | `app/database.py` | Every read and write to the database |
+| `app/auth.py` | The dashboard login |
 | `app/config.py` | Settings, read from `.env` |
 | `knowledge/` | The fact sheets the agent answers from (sample data for a made-up shop) |
 | `dashboard/` | The review page (React) |
@@ -41,6 +42,8 @@ pip install -r requirements.txt
 **2. Add your settings**
 
 Copy `.env.example` to `.env` and fill in the three keys. For Supabase, use the secret key: the tables are locked so that only it can read or write them.
+
+Also choose a `DASHBOARD_PASSWORD`. It is the password for the review page; until it is set, nobody can log in.
 
 **3. Create the database tables**
 
@@ -78,7 +81,7 @@ cd dashboard
 npm run dev
 ```
 
-Open http://localhost:5173. Send an email to the connected inbox; within a minute a draft appears on the page.
+Open http://localhost:5173 and log in with your dashboard password. Send an email to the connected inbox; within a minute a draft appears on the page.
 
 The backend also has a page listing everything it can do, at http://127.0.0.1:8000/docs.
 
@@ -100,5 +103,6 @@ The real run has the agent answer every test email, then a second model marks ea
 ## Safety notes
 
 - `.env` and everything in `credentials/` are ignored by Git. Never commit them.
-- The dashboard has no login yet. Anyone who can open it can send email from the connected inbox, so run it only on your own computer for now.
+- The dashboard is protected by one shared password. Anyone who knows it can send email from the connected inbox, so choose a long one and do not reuse it.
+- Before putting the project online, serve it over https and set `COOKIE_SECURE=true`.
 - Use a test Gmail account, not a personal one.

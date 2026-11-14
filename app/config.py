@@ -24,6 +24,12 @@ class Settings(BaseSettings):
     gmail_credentials_path: str = "credentials/credentials.json"
     gmail_token_path: str = "credentials/token.json"
 
+    # Review dashboard login. Without a password nobody can log in.
+    dashboard_password: str = ""
+    # Set to true once the site is served over https, so the login cookie
+    # is never sent over a plain connection.
+    cookie_secure: bool = False
+
     # How often the backend checks Gmail by itself, in seconds. 0 turns it off.
     poll_interval_seconds: int = 60
 

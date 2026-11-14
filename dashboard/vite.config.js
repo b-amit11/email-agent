@@ -8,7 +8,8 @@ export default defineConfig({
     // Anything the page requests under /api is passed on to the Python backend.
     proxy: {
       '/api': {
-        target: 'http://127.0.0.1:8000',
+        // Set API_TARGET to point at a backend running somewhere else.
+        target: process.env.API_TARGET || 'http://127.0.0.1:8000',
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api/, ''),
       },
