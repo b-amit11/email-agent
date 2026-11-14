@@ -1,6 +1,14 @@
-# The backend: the Python program that checks Gmail, drafts replies, and
-# answers the dashboard.
+# One image holding the whole project: the dashboard page and the Python backend.
 
+# Stage 1: build the dashboard into plain web files.
+FROM node:22-alpine AS dashboard
+WORKDIR /build
+COPY dashboard/package.json dashboard/package-lock.json ./
+RUN npm ci
+COPY dashboard/ .
+RUN npm run build
+
+# Stage 2: the Python program, which also serves those web files.
 FROM python:3.12-slim
 
 # Show log lines straight away and do not write .pyc files.
@@ -13,9 +21,10 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Then copy the program and the fact sheets.
+# Then copy the program, the fact sheets, and the built dashboard.
 COPY app ./app
 COPY knowledge ./knowledge
+COPY --from=dashboard /build/dist ./dashboard/dist
 
 # Run as an ordinary user, not as the all-powerful root user.
 RUN useradd --create-home appuser && mkdir -p /app/credentials && chown -R appuser /app
@@ -24,5 +33,6 @@ USER appuser
 EXPOSE 8000
 
 # One worker only: the background mail check must run exactly once.
-# --proxy-headers lets the backend see the visitor's real address through the dashboard's web server.
-CMD ["python", "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--proxy-headers", "--forwarded-allow-ips", "*"]
+# Hosting services say which port to listen on through PORT; 8000 is the fallback.
+# --proxy-headers lets the program see the visitor's real address behind the host's web server.
+CMD ["sh", "-c", "exec python -m uvicorn app.site:site --host 0.0.0.0 --port ${PORT:-8000} --proxy-headers --forwarded-allow-ips '*'"]

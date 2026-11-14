@@ -2,6 +2,7 @@
 
 import base64
 import html
+import json
 import re
 from datetime import datetime, timezone
 from email.message import EmailMessage
@@ -20,13 +21,43 @@ from app.config import get_settings
 SCOPES = ["https://www.googleapis.com/auth/gmail.modify"]
 
 
+# The login made from the GMAIL_TOKEN_JSON setting, kept so it is not rebuilt on every request.
+_hosted_login: Credentials | None = None
+
+
+def _hosted_credentials(token_json: str) -> Credentials:
+    """Gmail login for a hosted server, where there is no token file and no browser.
+
+    The whole content of token.json is supplied as the GMAIL_TOKEN_JSON setting.
+    """
+    global _hosted_login
+    if _hosted_login and _hosted_login.valid:
+        return _hosted_login
+
+    creds = Credentials.from_authorized_user_info(json.loads(token_json), SCOPES)
+    if not creds.valid:
+        if not creds.refresh_token:
+            raise RuntimeError(
+                "GMAIL_TOKEN_JSON cannot be renewed. Run gmail_login.py on your own "
+                "computer again and copy the new token.json into the setting."
+            )
+        creds.refresh(Request())
+    _hosted_login = creds
+    return creds
+
+
 def get_credentials() -> Credentials:
     """Return a valid Gmail login.
 
-    The first time, this opens a browser so you can sign in and approve.
-    After that, the saved token file is reused and refreshed automatically.
+    On your own computer: the first time, this opens a browser so you can sign
+    in and approve. After that, the saved token file is reused and refreshed.
+
+    On a hosted server: the login comes from the GMAIL_TOKEN_JSON setting.
     """
     settings = get_settings()
+    if settings.gmail_token_json:
+        return _hosted_credentials(settings.gmail_token_json)
+
     credentials_path = Path(settings.gmail_credentials_path)
     token_path = Path(settings.gmail_token_path)
 

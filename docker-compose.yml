@@ -1,4 +1,4 @@
-# Starts the whole project with one command:
+# Starts the whole project on your own computer with one command:
 #
 #     docker compose up --build
 #
@@ -8,7 +8,7 @@
 # (python gmail_login.py) so that credentials/token.json exists.
 
 services:
-  backend:
+  email-agent:
     build: .
     # Secrets come from .env at start-up. They are never baked into the image.
     env_file: .env
@@ -17,16 +17,8 @@ services:
       GMAIL_TOKEN_PATH: credentials/token.json
     volumes:
       # The Gmail login files live on your computer and are shared in.
-      # Not read-only: the backend rewrites token.json when it renews the login.
+      # Not read-only: the program rewrites token.json when it renews the login.
       - ./credentials:/app/credentials
-    restart: unless-stopped
-    # No ports are opened here on purpose: the backend can only be reached
-    # through the dashboard's web server.
-
-  dashboard:
-    build: ./dashboard
     ports:
-      - "8080:80"
-    depends_on:
-      - backend
+      - "8080:8000"
     restart: unless-stopped

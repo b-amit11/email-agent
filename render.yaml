@@ -1,0 +1,25 @@
+# Tells Render (render.com) how to host this project: one free web service,
+# built from the Dockerfile. The values marked "sync: false" are secrets that
+# you type into Render's website; they are never stored in this repository.
+
+services:
+  - type: web
+    name: email-agent
+    runtime: docker
+    plan: free
+    healthCheckPath: /api/health
+    envVars:
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_KEY
+        sync: false
+      - key: DASHBOARD_PASSWORD
+        sync: false
+      # The whole content of credentials/token.json, pasted in as one value.
+      - key: GMAIL_TOKEN_JSON
+        sync: false
+      # The site is served over https, so the login cookie must require it.
+      - key: COOKIE_SECURE
+        value: "true"

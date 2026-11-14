@@ -14,6 +14,7 @@ An AI assistant for a customer support inbox. It reads incoming emails from Gmai
 | Path | What it is |
 |---|---|
 | `app/main.py` | The web backend (FastAPI) and the background mail check |
+| `app/site.py` | Backend and dashboard together as one website, for Docker and hosting |
 | `app/gmail.py` | Gmail login, reading emails, sending replies |
 | `app/agent.py` | The agent: its instructions and the model it uses |
 | `app/knowledge.py` | Loads the fact sheets |
@@ -95,7 +96,19 @@ docker compose up --build
 
 Then open http://localhost:8080. Press Ctrl+C to stop.
 
-Do the Gmail sign-in from the Setup section first, so that `credentials/token.json` exists. The containers read your secrets from `.env` when they start; nothing secret is stored inside the images.
+Do the Gmail sign-in from the Setup section first, so that `credentials/token.json` exists. The container reads your secrets from `.env` when it starts; nothing secret is stored inside the image.
+
+One image holds everything: the dashboard is built into plain web files, and the Python program serves them alongside the backend (`app/site.py`).
+
+## Hosting it online
+
+The same image runs on any service that can build a Dockerfile. `render.yaml` describes a free web service on [Render](https://render.com):
+
+1. In Render, choose **New > Blueprint** and pick this repository.
+2. When asked, fill in the secrets: `ANTHROPIC_API_KEY`, `SUPABASE_URL`, `SUPABASE_KEY`, and `DASHBOARD_PASSWORD`, with the same values as your `.env`.
+3. For `GMAIL_TOKEN_JSON`, paste the whole content of `credentials/token.json`. A hosted server has no browser to sign in with, so it uses the login you made on your own computer.
+
+Render's free plan puts the service to sleep after 15 minutes without a visitor, and it takes about a minute to wake. Emails are only checked while it is awake; keeping the dashboard open keeps it awake.
 
 ## Changing what the agent knows
 

@@ -1,4 +1,4 @@
-# Keep secrets and bulky folders out of the backend image.
+# Keep secrets and bulky folders out of the image.
 .env
 .env.*
 credentials/
@@ -6,7 +6,8 @@ credentials/
 .venv/
 __pycache__/
 *.py[cod]
-dashboard/
+dashboard/node_modules/
+dashboard/dist/
 docs/
 evals/
 db/

@@ -292,6 +292,13 @@ export default function App() {
     }
   }, [loadDrafts])
 
+  // While the desk is open, look for new letters every 30 seconds.
+  useEffect(() => {
+    if (session !== 'in') return undefined
+    const timer = setInterval(loadDrafts, 30000)
+    return () => clearInterval(timer)
+  }, [session, loadDrafts])
+
   function refresh() {
     setLoading(true)
     loadDrafts()

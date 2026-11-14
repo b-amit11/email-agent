@@ -25,6 +25,9 @@ class Settings(BaseSettings):
     # Gmail API
     gmail_credentials_path: str = "credentials/credentials.json"
     gmail_token_path: str = "credentials/token.json"
+    # For a hosted server: the whole content of token.json, pasted in as one
+    # setting. When this is set, the two file paths above are not used.
+    gmail_token_json: str = ""
 
     # Review dashboard login. Without a password nobody can log in.
     dashboard_password: str = ""
