@@ -100,9 +100,3 @@ python -m evals.run --variant v1     # real run: costs a small amount per email
 
 The real run has the agent answer every test email, then a second model marks each reply against its checklist. Results are written to `evals/runs/reply-drafts/`.
 
-## Safety notes
-
-- `.env` and everything in `credentials/` are ignored by Git. Never commit them.
-- The dashboard is protected by one shared password. Anyone who knows it can send email from the connected inbox, so choose a long one and do not reuse it.
-- Before putting the project online, serve it over https and set `COOKIE_SECURE=true`.
-- Use a test Gmail account, not a personal one.
