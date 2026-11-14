@@ -124,6 +124,15 @@ function Letter({ draft, number, onDone, onChanged }) {
           <pre className="sheet">{replyText}</pre>
         )}
 
+        {draft.needs_follow_up && (
+          <aside className="memo">
+            <p className="memo-title">Follow-up needed</p>
+            <p className="memo-text">
+              {draft.follow_up_note || 'This reply promises that the team will do something.'}
+            </p>
+          </aside>
+        )}
+
         {problem && <p className="problem">That did not work: {problem}</p>}
 
         {confirming === 'send' && (
@@ -225,7 +234,15 @@ export default function App() {
   function handleDone(draft, outcome) {
     setDrafts((current) => current.filter((item) => item.id !== draft.id))
     setLog((current) => [
-      { id: draft.id, time: timeNow(), outcome, who: draft.email.from_address, subject: draft.email.subject },
+      {
+        id: draft.id,
+        time: timeNow(),
+        outcome,
+        who: draft.email.from_address,
+        subject: draft.email.subject,
+        // A sent reply that made a promise leaves a job behind; a rejected one does not.
+        todo: outcome !== 'Rejected' && draft.needs_follow_up ? draft.follow_up_note || 'Follow up with the customer.' : null,
+      },
       ...current,
     ])
   }
@@ -287,6 +304,7 @@ export default function App() {
                 <span className="log-outcome">{entry.outcome}</span>
                 <span className="log-who">
                   {entry.who} · {entry.subject || '(no subject)'}
+                  {entry.todo && <span className="log-todo">To do: {entry.todo}</span>}
                 </span>
               </li>
             ))}

@@ -10,6 +10,7 @@
   --rule: #cdc4b2;
   --green: #24543f;
   --red: #a3271c;
+  --amber: #8a5300;
   --on-ink: #fbf8f1;
 
   --serif: 'Iowan Old Style', 'Palatino Linotype', Palatino, 'Book Antiqua', Georgia, serif;
@@ -32,6 +33,7 @@
     --rule: #3d382e;
     --green: #7fc4a3;
     --red: #f08a7c;
+    --amber: #e3b25a;
     --on-ink: #15130f;
   }
 }
@@ -267,6 +269,34 @@ button.quiet {
   color: var(--green);
 }
 
+/* A memo slip pinned under the letter: a job the reply leaves behind. */
+
+.memo {
+  margin-top: 22px;
+  padding: 12px 16px 14px;
+  border: 1.5px solid var(--amber);
+  border-left-width: 8px;
+  background: var(--slip);
+}
+
+.memo-title {
+  margin: 0 0 4px;
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--amber);
+}
+
+.memo-text {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 0.86rem;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+
 .actions {
   display: flex;
   flex-wrap: wrap;
@@ -345,6 +375,12 @@ button.quiet {
 .log-who {
   color: var(--faded);
   overflow-wrap: anywhere;
+}
+
+.log-todo {
+  display: block;
+  margin-top: 2px;
+  color: var(--amber);
 }
 
 /* ---------- narrow screens ---------- */
