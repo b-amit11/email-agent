@@ -1,6 +1,6 @@
 """All reading and writing to the database goes through this file."""
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from functools import lru_cache
 
 from supabase import Client, create_client
@@ -104,6 +104,29 @@ def claim_email_for_drafting(email_id: str) -> dict | None:
         .execute()
     )
     return result.data[0] if result.data else None
+
+
+def release_stuck_emails(older_than_minutes: int = 30) -> int:
+    """Put emails back to 'new' if they were claimed for drafting but no draft
+    was ever saved, which happens when the program is stopped mid-draft.
+
+    Only emails saved more than `older_than_minutes` ago are touched, so a
+    draft that is being written right now is left alone. Returns how many
+    emails were released.
+    """
+    cutoff = (datetime.now(timezone.utc) - timedelta(minutes=older_than_minutes)).isoformat()
+    stuck = (
+        get_client()
+        .table("emails")
+        .select("id, drafts(id)")
+        .eq("status", "drafted")
+        .lt("created_at", cutoff)
+        .is_("drafts", "null")
+        .execute()
+    )
+    for row in stuck.data:
+        set_email_status(row["id"], "new")
+    return len(stuck.data)
 
 
 # ---------- drafts ----------

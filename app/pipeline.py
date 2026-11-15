@@ -5,6 +5,7 @@ Run it by hand with:  python -m app.pipeline
 
 import threading
 
+from app import database
 from app.drafting import draft_new_emails
 from app.ingest import ingest_new_emails
 
@@ -22,6 +23,8 @@ def run_once() -> dict:
         return {"skipped": True}
     try:
         counts = ingest_new_emails()
+        # An email left half-done by a stopped program gets another try.
+        database.release_stuck_emails()
         drafts = draft_new_emails()
         return {"skipped": False, **counts, "drafted": len(drafts)}
     finally:
