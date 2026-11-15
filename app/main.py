@@ -128,6 +128,13 @@ def list_open_drafts() -> list[dict]:
     return database.get_open_drafts()
 
 
+@app.get("/history", dependencies=[Depends(auth.require_login)])
+def list_filed_drafts() -> list[dict]:
+    """The filing cabinet: drafts that were sent or rejected, newest first.
+    Each comes with its original email."""
+    return database.get_filed_drafts()
+
+
 @app.post("/drafts/{draft_id}/approve", dependencies=[Depends(auth.require_login)])
 def approve_draft(draft_id: UUID, request: ApproveRequest | None = None) -> dict:
     """Approve a draft, optionally with edited text. This does not send it."""

@@ -150,28 +150,42 @@ def _parse_message(message: dict) -> dict:
     }
 
 
-def fetch_emails(query: str = "is:unread in:inbox", max_results: int = 10) -> list[dict]:
-    """Fetch emails matching a Gmail search. By default: unread ones in the inbox.
-
-    This only reads. It does not mark anything as read or change the mailbox.
-    """
-    service = get_service()
+def list_email_ids(
+    service, query: str = "is:unread in:inbox", max_results: int = 100
+) -> list[str]:
+    """List the Gmail ids of emails matching a search, oldest first.
+    By default: unread ones in the inbox. This only reads."""
     listing = (
         service.users()
         .messages()
         .list(userId="me", q=query, maxResults=max_results)
         .execute()
     )
-    emails = []
-    for item in listing.get("messages", []):
-        message = (
-            service.users()
-            .messages()
-            .get(userId="me", id=item["id"], format="full")
-            .execute()
-        )
-        emails.append(_parse_message(message))
-    return emails
+    ids = [item["id"] for item in listing.get("messages", [])]
+    return ids[::-1]  # Gmail lists newest first
+
+
+def get_email(service, gmail_message_id: str) -> dict:
+    """Read one email in full. It is not marked as read."""
+    message = (
+        service.users()
+        .messages()
+        .get(userId="me", id=gmail_message_id, format="full")
+        .execute()
+    )
+    return _parse_message(message)
+
+
+_own_address: str | None = None
+
+
+def own_address() -> str:
+    """The email address of the inbox we are connected to, in lower case."""
+    global _own_address
+    if _own_address is None:
+        profile = get_service().users().getProfile(userId="me").execute()
+        _own_address = profile["emailAddress"].lower()
+    return _own_address
 
 
 # ---------- sending emails ----------

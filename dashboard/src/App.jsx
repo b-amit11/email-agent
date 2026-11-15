@@ -195,6 +195,117 @@ function Letter({ draft, number, onDone, onChanged }) {
   )
 }
 
+// ---------- the filing cabinet ----------
+
+function outcomeOf(draft) {
+  if (draft.status === 'rejected') return 'Rejected'
+  const edited = (draft.final_body || '').trim() !== (draft.body || '').trim()
+  return edited ? 'Sent, edited' : 'Sent'
+}
+
+function FiledLetter({ draft }) {
+  const [open, setOpen] = useState(false)
+  const email = draft.email
+  const rejected = draft.status === 'rejected'
+  const outcome = outcomeOf(draft)
+
+  return (
+    <li className="file">
+      <button
+        className="file-tab"
+        onClick={() => setOpen((current) => !current)}
+        aria-expanded={open}
+      >
+        <span className="file-date">{formatDate(draft.sent_at || draft.reviewed_at)}</span>
+        <span className={`file-outcome ${rejected ? 'file-rejected' : ''}`}>{outcome}</span>
+        <span className="file-who">
+          {email.from_name || email.from_address} · {email.subject || '(no subject)'}
+        </span>
+        <span className="file-toggle" aria-hidden="true">
+          {open ? '−' : '+'}
+        </span>
+      </button>
+
+      {open && (
+        <article className="letter filed">
+          <section className="incoming" aria-label="Customer email">
+            <p className="label">Received {formatDate(email.received_at)}</p>
+            <dl className="slip">
+              <dt>From</dt>
+              <dd>
+                {email.from_name ? `${email.from_name} ` : ''}
+                <span className="address">{email.from_address}</span>
+              </dd>
+              <dt>Subject</dt>
+              <dd>{email.subject || '(no subject)'}</dd>
+            </dl>
+            <pre className="typed">{email.body}</pre>
+          </section>
+
+          <section className="reply" aria-label={rejected ? 'Rejected draft' : 'Reply that was sent'}>
+            <span className={`stamp ${rejected ? '' : 'stamp-approved'}`}>{outcome}</span>
+            <p className="label">
+              {rejected
+                ? `Draft, rejected ${formatDate(draft.reviewed_at)} · never sent`
+                : `Reply, sent ${formatDate(draft.sent_at)}`}
+            </p>
+            <pre className="sheet">{rejected ? draft.body : draft.final_body}</pre>
+            {draft.needs_follow_up && !rejected && (
+              <aside className="memo">
+                <p className="memo-title">Follow-up was needed</p>
+                <p className="memo-text">
+                  {draft.follow_up_note || 'This reply promised that the team would do something.'}
+                </p>
+              </aside>
+            )}
+          </section>
+        </article>
+      )}
+    </li>
+  )
+}
+
+function Cabinet({ onLocked }) {
+  const [filed, setFiled] = useState(null) // null while loading
+  const [problem, setProblem] = useState(null)
+
+  useEffect(() => {
+    let stillOpen = true
+    api('/history')
+      .then((data) => {
+        if (stillOpen) setFiled(data)
+      })
+      .catch((error) => {
+        if (!stillOpen) return
+        if (error.status === 401) onLocked()
+        else setProblem(error.message)
+      })
+    return () => {
+      stillOpen = false
+    }
+  }, [onLocked])
+
+  if (problem) return <p className="problem wide">Could not open the cabinet. ({problem})</p>
+  if (filed === null) return <p className="empty">Opening the drawer…</p>
+  if (filed.length === 0) {
+    return <p className="empty">The cabinet is empty. Letters you send or reject are filed here.</p>
+  }
+
+  const sent = filed.filter((draft) => draft.status === 'sent').length
+  return (
+    <section className="cabinet" aria-label="Filing cabinet">
+      <h2>
+        Filing cabinet · {sent} sent · {filed.length - sent} rejected
+      </h2>
+      <ul>
+        {filed.map((draft) => (
+          <FiledLetter key={draft.id} draft={draft} />
+        ))}
+      </ul>
+    </section>
+  )
+}
+
 // ---------- the locked door ----------
 
 function Login({ onDone }) {
@@ -248,6 +359,13 @@ export default function App() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [log, setLog] = useState([])
+  const [view, setView] = useState('tray') // 'tray' | 'cabinet'
+
+  const handleLocked = useCallback(() => {
+    setSession('out')
+    setDrafts([])
+    setView('tray')
+  }, [])
 
   // Ask the backend which drafts still need a person.
   const loadDrafts = useCallback(async () => {
@@ -316,6 +434,7 @@ export default function App() {
       setSession('out')
       setDrafts([])
       setLog([])
+      setView('tray')
     }
   }
 
@@ -359,9 +478,20 @@ export default function App() {
                   : `${drafts.length} ${drafts.length === 1 ? 'letter' : 'letters'} in the tray`}
             </span>
             <span>
-              <button className="quiet" onClick={refresh} disabled={loading}>
-                Check again
-              </button>
+              {view === 'tray' ? (
+                <>
+                  <button className="quiet" onClick={refresh} disabled={loading}>
+                    Check again
+                  </button>
+                  <button className="quiet" onClick={() => setView('cabinet')}>
+                    Filing cabinet
+                  </button>
+                </>
+              ) : (
+                <button className="quiet" onClick={() => setView('tray')}>
+                  Back to the tray
+                </button>
+              )}
               <button className="quiet" onClick={lockDesk}>
                 Lock the desk
               </button>
@@ -378,21 +508,24 @@ export default function App() {
         </p>
       )}
 
-      {session === 'in' && !loading && !error && drafts.length === 0 && (
+      {session === 'in' && view === 'cabinet' && <Cabinet onLocked={handleLocked} />}
+
+      {session === 'in' && view === 'tray' && !loading && !error && drafts.length === 0 && (
         <p className="empty">Nothing is waiting for you. New drafts will appear here.</p>
       )}
 
-      {drafts.map((draft, index) => (
-        <Letter
-          key={draft.id}
-          draft={draft}
-          number={index + 1}
-          onDone={handleDone}
-          onChanged={loadDrafts}
-        />
-      ))}
+      {view === 'tray' &&
+        drafts.map((draft, index) => (
+          <Letter
+            key={draft.id}
+            draft={draft}
+            number={index + 1}
+            onDone={handleDone}
+            onChanged={loadDrafts}
+          />
+        ))}
 
-      {log.length > 0 && (
+      {view === 'tray' && log.length > 0 && (
         <section className="log" aria-label="What you did this session">
           <h2>Out tray, this session</h2>
           <ul>

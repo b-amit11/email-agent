@@ -56,6 +56,20 @@ def save_email(
     return result.data[0] if result.data else None
 
 
+def known_gmail_ids(gmail_message_ids: list[str]) -> set[str]:
+    """Of the given Gmail message ids, return the ones already saved."""
+    if not gmail_message_ids:
+        return set()
+    result = (
+        get_client()
+        .table("emails")
+        .select("gmail_message_id")
+        .in_("gmail_message_id", gmail_message_ids)
+        .execute()
+    )
+    return {row["gmail_message_id"] for row in result.data}
+
+
 def get_emails(status: str = "new") -> list[dict]:
     """List emails with the given status, oldest first."""
     result = (
@@ -143,6 +157,21 @@ def get_open_drafts() -> list[dict]:
         .select("*, email:emails(*)")
         .in_("status", ["pending", "approved"])
         .order("created_at")
+        .execute()
+    )
+    return result.data
+
+
+def get_filed_drafts(limit: int = 200) -> list[dict]:
+    """List drafts a person has finished with: sent or rejected, newest first.
+    Each comes with its original email attached."""
+    result = (
+        get_client()
+        .table("drafts")
+        .select("*, email:emails(*)")
+        .in_("status", ["sent", "rejected"])
+        .order("reviewed_at", desc=True)
+        .limit(limit)
         .execute()
     )
     return result.data
