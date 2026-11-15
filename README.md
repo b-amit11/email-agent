@@ -8,6 +8,7 @@ An AI assistant for a customer support inbox. It reads incoming emails from Gmai
 2. **Draft.** For each new email, the agent writes a reply. It may only use facts from the files in `knowledge/`. If a question is not covered there, it says the team will follow up, and flags the draft as needing a follow-up.
 3. **Review.** The dashboard shows each customer email beside its draft. A person can approve and send it, edit it first, or reject it.
 4. **Send.** An approved reply is sent through Gmail in the same conversation as the customer's email. Each reply can be sent only once.
+5. **File.** Every reply that was sent or rejected is kept, and the dashboard's filing cabinet lists them all.
 
 ## What is in this repository
 
@@ -124,4 +125,12 @@ python -m evals.run --variant v1     # real run: costs a small amount per email
 ```
 
 The real run has the agent answer every test email, then a second model marks each reply against its checklist. Results are written to `evals/runs/reply-drafts/`.
+
+To see the test emails go through the real program instead, place them in the connected inbox:
+
+```powershell
+python -m evals.fill_inbox
+```
+
+Each one arrives as an unread email, gets a draft, and appears on the dashboard for review. The made-up customers use addresses that lead back to the same inbox, so approved replies never reach a stranger.
 
