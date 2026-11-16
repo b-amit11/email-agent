@@ -557,7 +557,17 @@ form.actions .ask {
 }
 
 .factsheet ul {
-  padding-left: 1.2em;
+  padding-left: 1.3em;
+  list-style: square outside;
+}
+
+.factsheet li {
+  display: list-item;
+  margin-bottom: 2px;
+}
+
+.factsheet li::marker {
+  color: var(--faded);
 }
 
 /* ---------- filing cabinet ---------- */
