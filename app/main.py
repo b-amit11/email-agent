@@ -5,16 +5,26 @@ Start it with:  python -m uvicorn app.main:app --reload
 
 import asyncio
 import logging
+from datetime import datetime, timezone
 from contextlib import asynccontextmanager
 from uuid import UUID
 
 from fastapi import Depends, FastAPI, HTTPException, Request, Response
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
-from app import auth, database, gmail, pipeline
+from app import auth, database, gmail, knowledge, pipeline
+from app.agent import rewrite_draft
 from app.config import get_settings
 
 log = logging.getLogger("uvicorn.error")
+
+# When the inbox was last checked without an error, for the dashboard to show.
+last_mail_check: str | None = None
+
+
+def _note_mail_check() -> None:
+    global last_mail_check
+    last_mail_check = datetime.now(timezone.utc).isoformat()
 
 
 async def _check_mail_forever(interval: int) -> None:
@@ -22,6 +32,7 @@ async def _check_mail_forever(interval: int) -> None:
     while True:
         try:
             result = await asyncio.to_thread(pipeline.run_once)
+            _note_mail_check()
             if result.get("saved") or result.get("ignored") or result.get("drafted"):
                 log.info(
                     "Mail check: %s new, %s ignored, %s drafted.",
@@ -116,7 +127,9 @@ def session(request: Request) -> dict:
 def check_mail_now() -> dict:
     """Fetch new emails and draft replies right now, without waiting."""
     try:
-        return pipeline.run_once()
+        result = pipeline.run_once()
+        _note_mail_check()
+        return result
     except Exception as error:
         raise HTTPException(status_code=502, detail=f"Mail check failed: {error}") from error
 
@@ -131,7 +144,13 @@ def list_open_drafts() -> list[dict]:
 @app.get("/summary", dependencies=[Depends(auth.require_login)])
 def summary() -> dict:
     """How many emails were received, and what became of their drafts."""
-    return database.get_counts()
+    return {**database.get_counts(), "last_mail_check": last_mail_check}
+
+
+@app.get("/knowledge", dependencies=[Depends(auth.require_login)])
+def list_fact_sheets() -> list[dict]:
+    """The fact sheets the agent answers from, for a person to read."""
+    return knowledge.load_sheets()
 
 
 @app.get("/history", dependencies=[Depends(auth.require_login)])
@@ -149,6 +168,36 @@ def approve_draft(draft_id: UUID, request: ApproveRequest | None = None) -> dict
     if final_body is not None and not final_body.strip():
         raise HTTPException(status_code=422, detail="The edited reply cannot be empty.")
     return database.review_draft(str(draft_id), approved=True, final_body=final_body)
+
+
+class RedraftRequest(BaseModel):
+    """What the reviewer wants changed, in their own words."""
+
+    note: str = Field(min_length=1, max_length=500)
+
+
+@app.post("/drafts/{draft_id}/redraft", dependencies=[Depends(auth.require_login)])
+def redraft(draft_id: UUID, request: RedraftRequest) -> dict:
+    """Have the agent write a waiting draft again, following the reviewer's note.
+    Nothing is sent."""
+    note = request.note.strip()
+    if not note:
+        raise HTTPException(status_code=422, detail="Say what should change.")
+    draft = _get_pending_draft(draft_id)
+    email = database.get_email(draft["email_id"])
+    try:
+        new = rewrite_draft(email, draft["body"], note)
+    except Exception as error:
+        raise HTTPException(
+            status_code=502, detail=f"The rewrite failed, the draft is unchanged: {error}"
+        ) from error
+
+    updated = database.replace_draft_text(
+        str(draft_id), new.reply, new.needs_follow_up, new.follow_up_note, new.sources
+    )
+    if updated is None:
+        raise HTTPException(status_code=409, detail="Draft was reviewed in the meantime.")
+    return updated
 
 
 @app.post("/drafts/{draft_id}/reject", dependencies=[Depends(auth.require_login)])
@@ -192,4 +241,9 @@ def send_draft(draft_id: UUID) -> dict:
         ) from error
 
     database.set_email_status(claimed["email_id"], "sent")
+    try:
+        # The customer's email has been answered: show that in Gmail too.
+        gmail.mark_read(email["gmail_message_id"])
+    except Exception:
+        log.warning("Reply sent, but could not mark the email as read in Gmail.")
     return claimed

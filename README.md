@@ -10,6 +10,15 @@ An AI assistant for a customer support inbox. It reads incoming emails from Gmai
 4. **Send.** An approved reply is sent through Gmail in the same conversation as the customer's email. Each reply can be sent only once.
 5. **File.** Every reply that was sent or rejected is kept, and the dashboard's filing cabinet lists them all.
 
+## What the reviewer can do
+
+- **Approve, edit, or reject** each draft. Sending always asks for a second click.
+- **Ask for a rewrite.** Type what should change ("shorter", "apologise for the delay") and the agent writes the draft again. It still may only use the fact sheets.
+- **See where an answer came from.** Each draft names the fact sheets it used; clicking a name opens that sheet.
+- **Read the fact sheets** the agent answers from, on their own page.
+- **Look back.** The filing cabinet lists every reply that was sent or rejected. It can be searched, filtered (including replies that still owe a follow-up), and downloaded as a spreadsheet file.
+- **Keep the inbox tidy.** An email is marked as read in Gmail once its reply is sent.
+
 ## What is in this repository
 
 | Path | What it is |
@@ -49,7 +58,7 @@ Also choose a `DASHBOARD_PASSWORD`. It is the password for the review page; unti
 
 **3. Create the database tables**
 
-In the Supabase SQL Editor, run the files in `db/` in order: `001_initial_tables.sql`, then `002_follow_up_flag.sql`.
+In the Supabase SQL Editor, run the files in `db/` in order: `001_initial_tables.sql`, `002_follow_up_flag.sql`, then `003_sources.sql`.
 
 **4. Connect Gmail**
 

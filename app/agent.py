@@ -112,6 +112,21 @@ def build_prompt(email: dict) -> str:
     )
 
 
+def build_rewrite_prompt(email: dict, previous: str, note: str) -> str:
+    """The message for a second attempt: the email, the first draft, and what
+    the reviewer wants changed."""
+    return (
+        f"{build_prompt(email)}\n\n"
+        "You already wrote this draft:\n"
+        f"<draft>\n{previous}\n</draft>\n\n"
+        "The teammate reviewing it asks for this change:\n"
+        f"<reviewer_note>\n{note}\n</reviewer_note>\n\n"
+        "Write the reply again with that change. All your rules still apply: "
+        "the knowledge base stays your only source of facts, so if the note "
+        "asks for a fact or a promise it does not support, leave that out."
+    )
+
+
 def tidy(draft: DraftReply) -> DraftReply:
     """Clean up what the agent returned: the two follow-up fields always agree,
     and only fact sheets that really exist are listed as sources."""
@@ -132,4 +147,10 @@ def write_draft(email: dict) -> DraftReply:
     Returns the reply text plus whether a teammate has to follow up.
     """
     result = get_agent().run_sync(build_prompt(email))
+    return tidy(result.output)
+
+
+def rewrite_draft(email: dict, previous: str, note: str) -> DraftReply:
+    """Ask the agent to write a reply again, following a note from the reviewer."""
+    result = get_agent().run_sync(build_rewrite_prompt(email, previous, note))
     return tidy(result.output)

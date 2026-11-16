@@ -34,6 +34,10 @@ function formatDate(value) {
   })
 }
 
+function formatTime(value) {
+  return new Date(value).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })
+}
+
 function timeNow() {
   return new Date().toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })
 }
@@ -45,21 +49,36 @@ function sheetTitle(name) {
 }
 
 // Which fact sheets a reply was answered from. Older drafts carry no list.
-function Sources({ sources }) {
+function Sources({ sources, onSheet }) {
   if (!Array.isArray(sources)) return null
   return (
     <p className="sources">
       <span className="sources-label">Answered from</span>
-      {sources.length === 0
-        ? 'no fact sheet · passed to the team'
-        : sources.map(sheetTitle).join(' · ')}
+      {sources.length === 0 && 'no fact sheet · passed to the team'}
+      {sources.map((name) => (
+        <button
+          key={name}
+          className="quiet source"
+          onClick={() => onSheet(name)}
+          title="Read this fact sheet"
+        >
+          {sheetTitle(name)}
+        </button>
+      ))}
     </p>
   )
 }
 
+// Turn the reviewer's CSV cell into something a spreadsheet reads safely.
+function csvCell(value) {
+  let text = String(value ?? '')
+  if (/^[=+\-@]/.test(text)) text = `'${text}`
+  return `"${text.replaceAll('"', '""')}"`
+}
+
 // ---------- one letter on the desk ----------
 
-function Letter({ draft, number, onDone, onChanged }) {
+function Letter({ draft, number, onDone, onChanged, onSheet }) {
   const email = draft.email
   const approved = draft.status === 'approved'
   const replyText = approved ? draft.final_body : draft.body
@@ -68,7 +87,8 @@ function Letter({ draft, number, onDone, onChanged }) {
   const editing = wantsEdit && !approved
   const setEditing = setWantsEdit
   const [text, setText] = useState(draft.body)
-  const [confirming, setConfirming] = useState(null) // 'send' | 'reject' | null
+  const [confirming, setConfirming] = useState(null) // 'send' | 'reject' | 'rewrite' | null
+  const [note, setNote] = useState('')
   const [busy, setBusy] = useState(false)
   const [problem, setProblem] = useState(null)
 
@@ -105,6 +125,19 @@ function Letter({ draft, number, onDone, onChanged }) {
     return run(async () => {
       await api(`/drafts/${draft.id}/reject`, { method: 'POST' })
       onDone(draft, 'Rejected')
+    })
+  }
+
+  function rewrite(event) {
+    event.preventDefault()
+    return run(async () => {
+      const fresh = await api(`/drafts/${draft.id}/redraft`, {
+        method: 'POST',
+        body: JSON.stringify({ note }),
+      })
+      setText(fresh.body)
+      setNote('')
+      onChanged()
     })
   }
 
@@ -145,7 +178,7 @@ function Letter({ draft, number, onDone, onChanged }) {
           <pre className="sheet">{replyText}</pre>
         )}
 
-        <Sources sources={draft.sources} />
+        <Sources sources={draft.sources} onSheet={onSheet} />
 
         {draft.needs_follow_up && (
           <aside className="memo">
@@ -184,6 +217,30 @@ function Letter({ draft, number, onDone, onChanged }) {
           </div>
         )}
 
+        {confirming === 'rewrite' && (
+          <form className="actions" onSubmit={rewrite}>
+            <label className="ask" htmlFor={`note-${draft.id}`}>
+              What should change?
+            </label>
+            <input
+              id={`note-${draft.id}`}
+              className="note"
+              autoFocus
+              maxLength={500}
+              placeholder="e.g. shorter, and apologise for the delay"
+              value={note}
+              onChange={(event) => setNote(event.target.value)}
+              disabled={busy}
+            />
+            <button className="primary" type="submit" disabled={busy || !note.trim()}>
+              {busy ? 'Rewriting…' : 'Rewrite'}
+            </button>
+            <button type="button" onClick={() => setConfirming(null)} disabled={busy}>
+              Never mind
+            </button>
+          </form>
+        )}
+
         {confirming === null && (
           <div className="actions">
             <button
@@ -194,6 +251,9 @@ function Letter({ draft, number, onDone, onChanged }) {
               {approved ? 'Send' : edited ? 'Approve edits & send' : 'Approve & send'}
             </button>
             {!approved && !editing && <button onClick={() => setEditing(true)}>Edit</button>}
+            {!approved && !editing && (
+              <button onClick={() => setConfirming('rewrite')}>Ask for a rewrite</button>
+            )}
             {editing && (
               <button
                 onClick={() => {
@@ -224,7 +284,7 @@ function outcomeOf(draft) {
   return edited ? 'Sent, edited' : 'Sent'
 }
 
-function FiledLetter({ draft }) {
+function FiledLetter({ draft, onSheet }) {
   const [open, setOpen] = useState(false)
   const email = draft.email
   const rejected = draft.status === 'rejected'
@@ -271,7 +331,7 @@ function FiledLetter({ draft }) {
                 : `Reply, sent ${formatDate(draft.sent_at)}`}
             </p>
             <pre className="sheet">{rejected ? draft.body : draft.final_body}</pre>
-            <Sources sources={draft.sources} />
+            <Sources sources={draft.sources} onSheet={onSheet} />
             {draft.needs_follow_up && !rejected && (
               <aside className="memo">
                 <p className="memo-title">Follow-up was needed</p>
@@ -287,9 +347,60 @@ function FiledLetter({ draft }) {
   )
 }
 
-function Cabinet({ onLocked }) {
+const FILTERS = [
+  ['all', 'All'],
+  ['sent', 'Sent'],
+  ['rejected', 'Rejected'],
+  ['follow-up', 'Follow-up owed'],
+]
+
+function matchesFilter(draft, filter) {
+  if (filter === 'sent') return draft.status === 'sent'
+  if (filter === 'rejected') return draft.status === 'rejected'
+  if (filter === 'follow-up') return draft.status === 'sent' && draft.needs_follow_up
+  return true
+}
+
+function matchesSearch(draft, words) {
+  if (!words) return true
+  const email = draft.email
+  const haystack = [
+    email.from_name,
+    email.from_address,
+    email.subject,
+    email.body,
+    draft.final_body || draft.body,
+  ]
+    .join(' ')
+    .toLowerCase()
+  return words.split(/\s+/).every((word) => haystack.includes(word))
+}
+
+// Save the listed letters as a file that opens in a spreadsheet.
+function downloadCsv(drafts) {
+  const header = ['Date', 'Outcome', 'Customer', 'Address', 'Subject', 'Follow-up', 'Reply']
+  const rows = drafts.map((draft) => [
+    draft.sent_at || draft.reviewed_at || '',
+    outcomeOf(draft),
+    draft.email.from_name || '',
+    draft.email.from_address,
+    draft.email.subject || '',
+    draft.status === 'sent' && draft.needs_follow_up ? draft.follow_up_note || 'yes' : '',
+    draft.status === 'rejected' ? draft.body : draft.final_body,
+  ])
+  const text = [header, ...rows].map((row) => row.map(csvCell).join(',')).join('\r\n')
+  const link = document.createElement('a')
+  link.href = URL.createObjectURL(new Blob(['\ufeff', text], { type: 'text/csv' }))
+  link.download = 'reply-desk-filing-cabinet.csv'
+  link.click()
+  URL.revokeObjectURL(link.href)
+}
+
+function Cabinet({ onLocked, onSheet }) {
   const [filed, setFiled] = useState(null) // null while loading
   const [problem, setProblem] = useState(null)
+  const [filter, setFilter] = useState('all')
+  const [search, setSearch] = useState('')
 
   useEffect(() => {
     let stillOpen = true
@@ -314,16 +425,121 @@ function Cabinet({ onLocked }) {
   }
 
   const sent = filed.filter((draft) => draft.status === 'sent').length
+  const words = search.trim().toLowerCase()
+  const shown = filed.filter(
+    (draft) => matchesFilter(draft, filter) && matchesSearch(draft, words),
+  )
   return (
     <section className="cabinet" aria-label="Filing cabinet">
       <h2>
         Filing cabinet · {sent} sent · {filed.length - sent} rejected
       </h2>
-      <ul>
-        {filed.map((draft) => (
-          <FiledLetter key={draft.id} draft={draft} />
-        ))}
-      </ul>
+      <div className="drawer">
+        <input
+          className="note"
+          type="search"
+          aria-label="Search the filing cabinet"
+          placeholder="Search by name, subject, or words in the letter"
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
+        />
+        <span className="drawer-filters">
+          {FILTERS.map(([value, label]) => (
+            <button
+              key={value}
+              className={`quiet ${filter === value ? 'chosen' : ''}`}
+              aria-pressed={filter === value}
+              onClick={() => setFilter(value)}
+            >
+              {label}
+            </button>
+          ))}
+          <button className="quiet" onClick={() => downloadCsv(shown)} disabled={shown.length === 0}>
+            Download list
+          </button>
+        </span>
+      </div>
+      {shown.length === 0 ? (
+        <p className="empty">No filed letter matches.</p>
+      ) : (
+        <ul>
+          {shown.map((draft) => (
+            <FiledLetter key={draft.id} draft={draft} onSheet={onSheet} />
+          ))}
+        </ul>
+      )}
+    </section>
+  )
+}
+
+// ---------- the fact sheets ----------
+
+// The sheets are simple text: "#" headings, "-" list items, and plain lines.
+function SheetText({ text }) {
+  const blocks = []
+  let items = []
+  const flush = () => {
+    if (items.length) blocks.push(<ul key={blocks.length}>{items}</ul>)
+    items = []
+  }
+  text.split('\n').forEach((line, index) => {
+    const trimmed = line.trim()
+    if (trimmed.startsWith('- ')) {
+      items.push(<li key={index}>{trimmed.slice(2)}</li>)
+      return
+    }
+    flush()
+    if (trimmed.startsWith('## ')) blocks.push(<h4 key={blocks.length}>{trimmed.slice(3)}</h4>)
+    else if (trimmed.startsWith('# ')) blocks.push(<h3 key={blocks.length}>{trimmed.slice(2)}</h3>)
+    else if (trimmed) blocks.push(<p key={blocks.length}>{trimmed}</p>)
+  })
+  flush()
+  return blocks
+}
+
+function FactSheets({ focus, onLocked }) {
+  const [sheets, setSheets] = useState(null) // null while loading
+  const [problem, setProblem] = useState(null)
+
+  useEffect(() => {
+    let stillOpen = true
+    api('/knowledge')
+      .then((data) => {
+        if (stillOpen) setSheets(data)
+      })
+      .catch((error) => {
+        if (!stillOpen) return
+        if (error.status === 401) onLocked()
+        else setProblem(error.message)
+      })
+    return () => {
+      stillOpen = false
+    }
+  }, [onLocked])
+
+  // Arriving from an "Answered from" link: bring that sheet into view.
+  useEffect(() => {
+    if (sheets && focus) {
+      document.getElementById(`sheet-${focus}`)?.scrollIntoView({ block: 'start' })
+    }
+  }, [sheets, focus])
+
+  if (problem) return <p className="problem wide">Could not fetch the fact sheets. ({problem})</p>
+  if (sheets === null) return <p className="empty">Fetching the fact sheets…</p>
+
+  return (
+    <section className="rulebook" aria-label="Fact sheets">
+      <h2>Fact sheets · everything the agent is allowed to know</h2>
+      {sheets.map((sheet) => (
+        <article
+          key={sheet.name}
+          id={`sheet-${sheet.name}`}
+          className={`factsheet ${focus === sheet.name ? 'factsheet-focus' : ''}`}
+        >
+          <p className="label">{sheet.name}</p>
+          <SheetText text={sheet.text} />
+        </article>
+      ))}
     </section>
   )
 }
@@ -381,7 +597,13 @@ export default function App() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [log, setLog] = useState([])
-  const [view, setView] = useState('tray') // 'tray' | 'cabinet'
+  const [view, setView] = useState('tray') // 'tray' | 'cabinet' | 'sheets'
+  const [focusSheet, setFocusSheet] = useState(null)
+
+  const openSheet = useCallback((name) => {
+    setFocusSheet(name)
+    setView('sheets')
+  }, [])
   const [counts, setCounts] = useState(null)
 
   const handleLocked = useCallback(() => {
@@ -502,20 +724,28 @@ export default function App() {
                 : drafts.length === 0
                   ? 'The tray is empty'
                   : `${drafts.length} ${drafts.length === 1 ? 'letter' : 'letters'} in the tray`}
+              {counts?.last_mail_check && (
+                <span className="checked"> · inbox checked {formatTime(counts.last_mail_check)}</span>
+              )}
             </span>
             <span>
               {view === 'tray' ? (
-                <>
-                  <button className="quiet" onClick={refresh} disabled={loading}>
-                    Check again
-                  </button>
-                  <button className="quiet" onClick={() => setView('cabinet')}>
-                    Filing cabinet
-                  </button>
-                </>
+                <button className="quiet" onClick={refresh} disabled={loading}>
+                  Check again
+                </button>
               ) : (
                 <button className="quiet" onClick={() => setView('tray')}>
                   Back to the tray
+                </button>
+              )}
+              {view !== 'cabinet' && (
+                <button className="quiet" onClick={() => setView('cabinet')}>
+                  Filing cabinet
+                </button>
+              )}
+              {view !== 'sheets' && (
+                <button className="quiet" onClick={() => openSheet(null)}>
+                  Fact sheets
                 </button>
               )}
               <button className="quiet" onClick={lockDesk}>
@@ -554,7 +784,13 @@ export default function App() {
         </p>
       )}
 
-      {session === 'in' && view === 'cabinet' && <Cabinet onLocked={handleLocked} />}
+      {session === 'in' && view === 'cabinet' && (
+        <Cabinet onLocked={handleLocked} onSheet={openSheet} />
+      )}
+
+      {session === 'in' && view === 'sheets' && (
+        <FactSheets focus={focusSheet} onLocked={handleLocked} />
+      )}
 
       {session === 'in' && view === 'tray' && !loading && !error && drafts.length === 0 && (
         <p className="empty">Nothing is waiting for you. New drafts will appear here.</p>
@@ -568,6 +804,7 @@ export default function App() {
             number={index + 1}
             onDone={handleDone}
             onChanged={loadDrafts}
+            onSheet={openSheet}
           />
         ))}
 

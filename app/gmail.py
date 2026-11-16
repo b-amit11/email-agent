@@ -176,6 +176,17 @@ def get_email(service, gmail_message_id: str) -> dict:
     return _parse_message(message)
 
 
+def mark_read(gmail_message_id: str) -> None:
+    """Mark one email as read in Gmail, so the inbox shows it has been dealt with."""
+    (
+        get_service()
+        .users()
+        .messages()
+        .modify(userId="me", id=gmail_message_id, body={"removeLabelIds": ["UNREAD"]})
+        .execute()
+    )
+
+
 _own_address: str | None = None
 
 

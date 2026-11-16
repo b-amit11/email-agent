@@ -13,6 +13,14 @@ def sheet_names() -> list[str]:
     return [path.stem for path in sorted(KNOWLEDGE_DIR.glob("*.md"))]
 
 
+def load_sheets() -> list[dict]:
+    """Every fact sheet as its name and its text, for showing to a person."""
+    return [
+        {"name": path.stem, "text": path.read_text(encoding="utf-8").strip()}
+        for path in sorted(KNOWLEDGE_DIR.glob("*.md"))
+    ]
+
+
 def load_knowledge() -> str:
     """Read every fact sheet and join them into one block of text."""
     sheets = []

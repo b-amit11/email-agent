@@ -47,7 +47,15 @@ def ingest_new_emails() -> dict:
 
         if row is None:
             counts["already_known"] += 1
-        elif is_automated(email["from_address"]) or is_from_us(email["from_address"]):
+        elif is_from_us(email["from_address"]):
+            database.set_email_status(row["id"], "ignored")
+            counts["ignored"] += 1
+            # A copy of our own reply: nobody needs to read it, so clear it.
+            try:
+                gmail.mark_read(gmail_message_id)
+            except Exception:
+                pass
+        elif is_automated(email["from_address"]):
             database.set_email_status(row["id"], "ignored")
             counts["ignored"] += 1
         else:

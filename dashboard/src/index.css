@@ -473,7 +473,113 @@ button.quiet {
   color: var(--amber);
 }
 
+/* ---------- small pieces ---------- */
+
+.checked {
+  color: var(--faded);
+}
+
+/* A fact sheet named under a reply: a link to read it. */
+button.source {
+  padding: 0 4px;
+  margin-right: 8px;
+  font-size: 0.78rem;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--faded);
+}
+
+/* A one-line text box: the rewrite note, the cabinet search. */
+.note {
+  flex: 2 1 240px;
+  min-width: 0;
+  padding: 9px 12px;
+  font-family: var(--mono);
+  font-size: 0.86rem;
+  color: var(--ink);
+  background: transparent;
+  border: 1.5px solid var(--ink);
+  border-radius: 0;
+}
+
+.note:focus-visible {
+  outline: 2px solid var(--green);
+  outline-offset: 2px;
+}
+
+form.actions .ask {
+  flex: 0 0 auto;
+}
+
+/* ---------- fact sheets ---------- */
+
+.rulebook h2 {
+  margin: 0 0 16px;
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  font-weight: 400;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--faded);
+}
+
+.factsheet {
+  margin-bottom: 22px;
+  padding: 24px 30px 20px;
+  background: var(--paper);
+  border: 1px solid var(--rule);
+  border-left: 6px solid var(--rule);
+  scroll-margin-top: 16px;
+}
+
+.factsheet-focus {
+  border-left-color: var(--green);
+}
+
+.factsheet h3 {
+  margin: 0 0 10px;
+  font-size: 1.5rem;
+  font-weight: 400;
+  font-style: italic;
+}
+
+.factsheet h4 {
+  margin: 18px 0 4px;
+  font-family: var(--mono);
+  font-size: 0.74rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.factsheet p,
+.factsheet ul {
+  margin: 0 0 8px;
+}
+
+.factsheet ul {
+  padding-left: 1.2em;
+}
+
 /* ---------- filing cabinet ---------- */
+
+.drawer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.drawer-filters {
+  display: flex;
+  flex-wrap: wrap;
+}
+
+button.chosen {
+  text-decoration: none;
+  border-color: var(--ink);
+}
+
 
 .cabinet h2 {
   margin: 0 0 10px;

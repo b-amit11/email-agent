@@ -187,6 +187,40 @@ def get_open_drafts() -> list[dict]:
     return result.data
 
 
+def replace_draft_text(
+    draft_id: str,
+    body: str,
+    needs_follow_up: bool,
+    follow_up_note: str | None,
+    sources: list[str] | None,
+) -> dict | None:
+    """Swap in a rewritten reply for a draft that is still waiting for review.
+
+    Returns the updated draft with its email attached, or None if the draft
+    was reviewed in the meantime.
+    """
+    result = (
+        get_client()
+        .table("drafts")
+        .update(
+            {
+                "body": body,
+                "needs_follow_up": needs_follow_up,
+                "follow_up_note": follow_up_note,
+                "sources": sources,
+            }
+        )
+        .eq("id", draft_id)
+        .eq("status", "pending")
+        .execute()
+    )
+    if not result.data:
+        return None
+    updated = result.data[0]
+    updated["email"] = get_email(updated["email_id"])
+    return updated
+
+
 def get_filed_drafts(limit: int = 200) -> list[dict]:
     """List drafts a person has finished with: sent or rejected, newest first.
     Each comes with its original email attached."""
