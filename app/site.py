@@ -33,5 +33,20 @@ backend.router.routes = [
 ]
 site.mount("/api", backend)
 
+class DashboardFiles(StaticFiles):
+    """Serves the dashboard, telling browsers to always ask for the newest page.
+
+    Without this a browser may keep showing yesterday's page after an update.
+    The page's scripts and styles get a new file name on every build, so they
+    can safely be kept.
+    """
+
+    async def get_response(self, path: str, scope):
+        response = await super().get_response(path, scope)
+        if response.headers.get("content-type", "").startswith("text/html"):
+            response.headers["Cache-Control"] = "no-cache"
+        return response
+
+
 if DASHBOARD_FILES.is_dir():
-    site.mount("/", StaticFiles(directory=DASHBOARD_FILES, html=True), name="dashboard")
+    site.mount("/", DashboardFiles(directory=DASHBOARD_FILES, html=True), name="dashboard")
