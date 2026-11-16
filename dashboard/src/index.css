@@ -507,8 +507,10 @@ button.source {
   outline-offset: 2px;
 }
 
-form.actions .ask {
-  flex: 0 0 auto;
+/* The rewrite note: question, then a full-width box, then the buttons. */
+form.actions .ask,
+form.actions .note {
+  flex: 1 1 100%;
 }
 
 /* ---------- fact sheets ---------- */

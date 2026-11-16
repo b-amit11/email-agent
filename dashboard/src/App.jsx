@@ -227,7 +227,7 @@ function Letter({ draft, number, onDone, onChanged, onSheet }) {
               className="note"
               autoFocus
               maxLength={500}
-              placeholder="e.g. shorter, and apologise for the delay"
+              placeholder="e.g. shorter, and apologize for the delay"
               value={note}
               onChange={(event) => setNote(event.target.value)}
               disabled={busy}

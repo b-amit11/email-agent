@@ -13,7 +13,7 @@ An AI assistant for a customer support inbox. It reads incoming emails from Gmai
 ## What the reviewer can do
 
 - **Approve, edit, or reject** each draft. Sending always asks for a second click.
-- **Ask for a rewrite.** Type what should change ("shorter", "apologise for the delay") and the agent writes the draft again. It still may only use the fact sheets.
+- **Ask for a rewrite.** Type what should change ("shorter", "apologize for the delay") and the agent writes the draft again. It still may only use the fact sheets.
 - **See where an answer came from.** Each draft names the fact sheets it used; clicking a name opens that sheet.
 - **Read the fact sheets** the agent answers from, on their own page.
 - **Look back.** The filing cabinet lists every reply that was sent or rejected. It can be searched, filtered (including replies that still owe a follow-up), and downloaded as a spreadsheet file.
