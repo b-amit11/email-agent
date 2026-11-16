@@ -38,6 +38,25 @@ function timeNow() {
   return new Date().toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })
 }
 
+// "03-returns-and-refunds" -> "Returns and refunds"
+function sheetTitle(name) {
+  const words = name.replace(/^\d+-/, '').replaceAll('-', ' ')
+  return words.charAt(0).toUpperCase() + words.slice(1)
+}
+
+// Which fact sheets a reply was answered from. Older drafts carry no list.
+function Sources({ sources }) {
+  if (!Array.isArray(sources)) return null
+  return (
+    <p className="sources">
+      <span className="sources-label">Answered from</span>
+      {sources.length === 0
+        ? 'no fact sheet · passed to the team'
+        : sources.map(sheetTitle).join(' · ')}
+    </p>
+  )
+}
+
 // ---------- one letter on the desk ----------
 
 function Letter({ draft, number, onDone, onChanged }) {
@@ -125,6 +144,8 @@ function Letter({ draft, number, onDone, onChanged }) {
         ) : (
           <pre className="sheet">{replyText}</pre>
         )}
+
+        <Sources sources={draft.sources} />
 
         {draft.needs_follow_up && (
           <aside className="memo">
@@ -250,6 +271,7 @@ function FiledLetter({ draft }) {
                 : `Reply, sent ${formatDate(draft.sent_at)}`}
             </p>
             <pre className="sheet">{rejected ? draft.body : draft.final_body}</pre>
+            <Sources sources={draft.sources} />
             {draft.needs_follow_up && !rejected && (
               <aside className="memo">
                 <p className="memo-title">Follow-up was needed</p>

@@ -138,6 +138,7 @@ def save_draft(
     model: str | None = None,
     needs_follow_up: bool = False,
     follow_up_note: str | None = None,
+    sources: list[str] | None = None,
 ) -> dict:
     """Save an AI-written reply and mark its email as drafted."""
     result = (
@@ -150,6 +151,7 @@ def save_draft(
                 "model": model,
                 "needs_follow_up": needs_follow_up,
                 "follow_up_note": follow_up_note,
+                "sources": sources,
             }
         )
         .execute()

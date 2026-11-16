@@ -33,6 +33,7 @@ def draft_new_emails() -> list[dict]:
                     model=model_name,
                     needs_follow_up=draft.needs_follow_up,
                     follow_up_note=draft.follow_up_note,
+                    sources=draft.sources,
                 )
             )
         except Exception:

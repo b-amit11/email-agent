@@ -270,6 +270,26 @@ button.quiet {
   overflow-wrap: anywhere;
 }
 
+/* A footnote under the letter: the fact sheets it was answered from. */
+
+.sources {
+  margin: 20px 0 0;
+  padding-top: 10px;
+  border-top: 1px dotted var(--rule);
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  color: var(--faded);
+  overflow-wrap: anywhere;
+}
+
+.sources-label {
+  margin-right: 10px;
+  font-size: 0.66rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--green);
+}
+
 .editor {
   padding: 12px 14px;
   border: 1.5px solid var(--ink);

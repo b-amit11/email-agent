@@ -11,7 +11,7 @@ from pydantic_ai.models.anthropic import AnthropicModel  # noqa: E402
 from pydantic_ai.providers.anthropic import AnthropicProvider  # noqa: E402
 
 from app.config import get_settings  # noqa: E402
-from app.knowledge import load_knowledge  # noqa: E402
+from app.knowledge import load_knowledge, sheet_names  # noqa: E402
 
 INSTRUCTIONS = """\
 You are a customer support agent for the company described in the knowledge
@@ -55,6 +55,12 @@ to do:
 - follow_up_note is one short line telling the teammate exactly what to do,
   including the order number if the customer gave one. Leave it empty when
   needs_follow_up is false.
+
+Finally, say which knowledge base documents the facts in your reply came from:
+- sources lists the name of each document you actually took a fact from, for
+  example "02-shipping". Do not count the sign-off.
+- Leave sources empty when the reply states no facts from the knowledge base,
+  for example when it only says the team will follow up.
 """
 
 
@@ -66,6 +72,10 @@ class DraftReply(BaseModel):
     follow_up_note: str | None = Field(
         default=None,
         description="One short line saying what the teammate must do. Empty if nothing is needed.",
+    )
+    sources: list[str] = Field(
+        default_factory=list,
+        description="Names of the knowledge base documents the reply's facts came from.",
     )
 
 
@@ -103,12 +113,16 @@ def build_prompt(email: dict) -> str:
 
 
 def tidy(draft: DraftReply) -> DraftReply:
-    """Clean up what the agent returned so the two follow-up fields always agree."""
+    """Clean up what the agent returned: the two follow-up fields always agree,
+    and only fact sheets that really exist are listed as sources."""
     note = (draft.follow_up_note or "").strip() or None
+    real = sheet_names()
+    sources = [name for name in dict.fromkeys(draft.sources) if name in real]
     return DraftReply(
         reply=draft.reply.strip(),
         needs_follow_up=draft.needs_follow_up,
         follow_up_note=note if draft.needs_follow_up else None,
+        sources=sources,
     )
 
 
