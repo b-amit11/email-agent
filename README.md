@@ -17,6 +17,7 @@ An AI assistant for a customer support inbox. It reads incoming emails from Gmai
 - **See where an answer came from.** Each draft names the fact sheets it used; clicking a name opens that sheet.
 - **Read the fact sheets** the agent answers from, on their own page.
 - **Look back.** The filing cabinet lists every reply that was sent or rejected. It can be searched, filtered (including replies that still owe a follow-up), and downloaded as a spreadsheet file.
+- **Undo a rejection.** A rejected draft can be put back in the tray from the filing cabinet, to be reworked and sent after all.
 - **Keep the inbox tidy.** An email is marked as read in Gmail once its reply is sent.
 
 ## What is in this repository

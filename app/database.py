@@ -282,6 +282,22 @@ def review_draft(draft_id: str, approved: bool, final_body: str | None = None) -
     return result.data[0]
 
 
+def reopen_draft(draft_id: str) -> dict | None:
+    """Undo a rejection: put the draft back to 'pending' so it can be reviewed again.
+
+    Returns the draft, or None if it was not in the 'rejected' state.
+    """
+    result = (
+        get_client()
+        .table("drafts")
+        .update({"status": "pending", "reviewed_at": None})
+        .eq("id", draft_id)
+        .eq("status", "rejected")
+        .execute()
+    )
+    return result.data[0] if result.data else None
+
+
 def claim_draft_for_sending(draft_id: str) -> dict | None:
     """Flip an approved draft to 'sent' so that it can only ever be sent once.
 

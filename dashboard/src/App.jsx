@@ -284,8 +284,23 @@ function outcomeOf(draft) {
   return edited ? 'Sent, edited' : 'Sent'
 }
 
-function FiledLetter({ draft, onSheet }) {
+function FiledLetter({ draft, onSheet, onReopened }) {
   const [open, setOpen] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const [problem, setProblem] = useState(null)
+
+  async function reopen() {
+    setBusy(true)
+    setProblem(null)
+    try {
+      await api(`/drafts/${draft.id}/reopen`, { method: 'POST' })
+      onReopened(draft)
+    } catch (error) {
+      setProblem(error.message)
+      setBusy(false)
+    }
+  }
+
   const email = draft.email
   const rejected = draft.status === 'rejected'
   const outcome = outcomeOf(draft)
@@ -332,6 +347,15 @@ function FiledLetter({ draft, onSheet }) {
             </p>
             <pre className="sheet">{rejected ? draft.body : draft.final_body}</pre>
             <Sources sources={draft.sources} onSheet={onSheet} />
+            {problem && <p className="problem">That did not work: {problem}</p>}
+            {rejected && (
+              <div className="actions">
+                <span className="ask">Rejected by mistake, or want to rework it?</span>
+                <button onClick={reopen} disabled={busy}>
+                  {busy ? 'Moving…' : 'Put back in the tray'}
+                </button>
+              </div>
+            )}
             {draft.needs_follow_up && !rejected && (
               <aside className="memo">
                 <p className="memo-title">Follow-up was needed</p>
@@ -396,7 +420,7 @@ function downloadCsv(drafts) {
   URL.revokeObjectURL(link.href)
 }
 
-function Cabinet({ onLocked, onSheet }) {
+function Cabinet({ onLocked, onSheet, onReopened }) {
   const [filed, setFiled] = useState(null) // null while loading
   const [problem, setProblem] = useState(null)
   const [filter, setFilter] = useState('all')
@@ -464,7 +488,15 @@ function Cabinet({ onLocked, onSheet }) {
       ) : (
         <ul>
           {shown.map((draft) => (
-            <FiledLetter key={draft.id} draft={draft} onSheet={onSheet} />
+            <FiledLetter
+              key={draft.id}
+              draft={draft}
+              onSheet={onSheet}
+              onReopened={(reopened) => {
+                setFiled((current) => current.filter((item) => item.id !== reopened.id))
+                onReopened()
+              }}
+            />
           ))}
         </ul>
       )}
@@ -785,7 +817,7 @@ export default function App() {
       )}
 
       {session === 'in' && view === 'cabinet' && (
-        <Cabinet onLocked={handleLocked} onSheet={openSheet} />
+        <Cabinet onLocked={handleLocked} onSheet={openSheet} onReopened={loadDrafts} />
       )}
 
       {session === 'in' && view === 'sheets' && (

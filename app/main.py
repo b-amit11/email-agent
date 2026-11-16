@@ -207,6 +207,16 @@ def reject_draft(draft_id: UUID) -> dict:
     return database.review_draft(str(draft_id), approved=False)
 
 
+@app.post("/drafts/{draft_id}/reopen", dependencies=[Depends(auth.require_login)])
+def reopen_draft(draft_id: UUID) -> dict:
+    """Undo a rejection: the draft goes back to waiting for review, where it
+    can be edited, rewritten, sent, or rejected again."""
+    reopened = database.reopen_draft(str(draft_id))
+    if reopened is None:
+        raise HTTPException(status_code=409, detail="Only a rejected draft can be put back.")
+    return reopened
+
+
 @app.post("/drafts/{draft_id}/send", dependencies=[Depends(auth.require_login)])
 def send_draft(draft_id: UUID) -> dict:
     """Send an approved draft to the customer, as a reply in the same thread.
