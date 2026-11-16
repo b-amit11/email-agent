@@ -24,6 +24,13 @@ DASHBOARD_FILES = Path(__file__).resolve().parent.parent / "dashboard" / "dist"
 # The background mail check is started here, because a program mounted
 # inside another one does not run its own start-up steps.
 site = FastAPI(title="Email Agent", lifespan=lifespan, docs_url=None, redoc_url=None, openapi_url=None)
+
+# The backend's own help pages are handy while developing, but a visitor to
+# the public website has no use for them, so they are taken out here.
+HELP_PAGES = {"/docs", "/docs/oauth2-redirect", "/redoc", "/openapi.json"}
+backend.router.routes = [
+    route for route in backend.router.routes if getattr(route, "path", None) not in HELP_PAGES
+]
 site.mount("/api", backend)
 
 if DASHBOARD_FILES.is_dir():

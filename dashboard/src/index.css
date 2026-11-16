@@ -89,6 +89,36 @@ h1 {
   font-size: 0.82rem;
 }
 
+/* The running totals, set out like a line in a ledger. */
+
+.ledger {
+  display: flex;
+  flex-wrap: wrap;
+  margin: 16px 0 0;
+  border-top: 1px solid var(--rule);
+}
+
+.ledger div {
+  flex: 1 1 110px;
+  padding: 10px 14px 2px 0;
+}
+
+.ledger dt {
+  font-family: var(--mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--faded);
+}
+
+.ledger dd {
+  margin: 0;
+  font-size: 1.7rem;
+  font-style: italic;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+}
+
 /* ---------- buttons ---------- */
 
 button {

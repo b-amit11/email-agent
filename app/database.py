@@ -200,6 +200,26 @@ def get_filed_drafts(limit: int = 200) -> list[dict]:
     return result.data
 
 
+def _count(table: str, statuses: list[str] | None = None) -> int:
+    """Count the rows in a table, optionally only those with certain statuses."""
+    query = get_client().table(table).select("id", count="exact")
+    if statuses:
+        query = query.in_("status", statuses)
+    return query.limit(1).execute().count or 0
+
+
+def get_counts() -> dict:
+    """The numbers for the top of the dashboard."""
+    # Emails that were never meant to be answered (automated senders, copies
+    # of our own replies) are left out of "received".
+    return {
+        "received": _count("emails", ["new", "drafted", "sent"]),
+        "waiting": _count("drafts", ["pending", "approved"]),
+        "sent": _count("drafts", ["sent"]),
+        "rejected": _count("drafts", ["rejected"]),
+    }
+
+
 def get_draft(draft_id: str) -> dict | None:
     """Get one draft by its id, or None if there is no such draft."""
     result = get_client().table("drafts").select("*").eq("id", draft_id).execute()

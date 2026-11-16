@@ -360,6 +360,7 @@ export default function App() {
   const [error, setError] = useState(null)
   const [log, setLog] = useState([])
   const [view, setView] = useState('tray') // 'tray' | 'cabinet'
+  const [counts, setCounts] = useState(null)
 
   const handleLocked = useCallback(() => {
     setSession('out')
@@ -372,6 +373,8 @@ export default function App() {
     try {
       setDrafts(await api('/drafts'))
       setError(null)
+      // The numbers are a nicety: if they fail, the desk still works.
+      api('/summary').then(setCounts, () => {})
     } catch (problem) {
       if (problem.status === 401) {
         // The pass ran out or was never there: back to the locked door.
@@ -441,6 +444,7 @@ export default function App() {
   // A letter was sent or rejected: take it off the desk and note it in the log.
   function handleDone(draft, outcome) {
     setDrafts((current) => current.filter((item) => item.id !== draft.id))
+    api('/summary').then(setCounts, () => {})
     setLog((current) => [
       {
         id: draft.id,
@@ -497,6 +501,26 @@ export default function App() {
               </button>
             </span>
           </div>
+        )}
+        {session === 'in' && counts && (
+          <dl className="ledger" aria-label="Totals so far">
+            <div>
+              <dt>Received</dt>
+              <dd>{counts.received}</dd>
+            </div>
+            <div>
+              <dt>Waiting</dt>
+              <dd>{counts.waiting}</dd>
+            </div>
+            <div>
+              <dt>Sent</dt>
+              <dd>{counts.sent}</dd>
+            </div>
+            <div>
+              <dt>Rejected</dt>
+              <dd>{counts.rejected}</dd>
+            </div>
+          </dl>
         )}
       </header>
 

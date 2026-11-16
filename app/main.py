@@ -128,6 +128,12 @@ def list_open_drafts() -> list[dict]:
     return database.get_open_drafts()
 
 
+@app.get("/summary", dependencies=[Depends(auth.require_login)])
+def summary() -> dict:
+    """How many emails were received, and what became of their drafts."""
+    return database.get_counts()
+
+
 @app.get("/history", dependencies=[Depends(auth.require_login)])
 def list_filed_drafts() -> list[dict]:
     """The filing cabinet: drafts that were sent or rejected, newest first.
