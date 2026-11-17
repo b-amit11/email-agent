@@ -33,3 +33,7 @@ evals/runs/**/trajectory/
 
 # Logs
 *.log
+
+# Personal speaking notes: kept on this computer only
+docs/03-presentation-script.docx
+docs/04-status-update-script.docx
